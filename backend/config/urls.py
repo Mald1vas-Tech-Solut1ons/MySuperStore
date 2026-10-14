@@ -1,9 +1,23 @@
 from django.conf import settings
 from django.contrib import admin
+from django.db import connection
+from django.http import JsonResponse
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+
+
+def health(request):
+    """Liveness/readiness para o Caddy, o healthcheck do Docker e o deploy."""
+    try:
+        connection.ensure_connection()
+    except Exception:
+        return JsonResponse({"status": "error", "database": "down"}, status=503)
+    return JsonResponse({"status": "ok"})
+
+
 urlpatterns = [
+    path("api/health/", health, name="health"),
     path("admin/", admin.site.urls),
     # OpenAPI docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
