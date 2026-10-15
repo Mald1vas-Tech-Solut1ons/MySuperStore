@@ -9,6 +9,9 @@ MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")  # noqa: F405
 STORAGES["staticfiles"] = {
     "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
 }
+# django-cloudinary-storage ainda lê STATICFILES_STORAGE no collectstatic
+# (removido no Django 5.1); sem isto o collectstatic quebra com AttributeError.
+STATICFILES_STORAGE = STORAGES["staticfiles"]["BACKEND"]
 
 # ── Segurança ─────────────────────────────────────────────────────────────────
 # Railway e Vercel terminam SSL no edge — o app recebe HTTP internamente

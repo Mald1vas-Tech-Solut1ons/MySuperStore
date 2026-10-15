@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup do Postgres do MySuperStore
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/home/ubuntu/mysuperstore/current/deploy/oracle/backup-db.sh

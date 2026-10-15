@@ -1,0 +1,107 @@
+# MySuperStore — produção na VM Oracle A1 (ARM64).
+# Rodado por deploy.sh a partir de releases/<sha>/deploy/oracle.
+name: mysuperstore
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+x-backend: &backend
+  image: mysuperstore-backend:${RELEASE:-latest}
+  restart: unless-stopped
+  env_file: ${SHARED_DIR:-/home/ubuntu/mysuperstore/shared}/.env.prod
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+  volumes:
+    # Certificados mTLS do Efí (.p12), somente leitura
+    - ${SHARED_DIR:-/home/ubuntu/mysuperstore/shared}/certs:/app/certs:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  logging: *logging
+
+services:
+  api:
+    <<: *backend
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile.prod
+    # daphne = HTTP + WebSocket (notificações/chat)
+    command: sh -c "python manage.py collectstatic --noinput --upload-unhashed-files >/dev/null && exec daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/',timeout=5).status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    mem_limit: 1g
+
+  worker:
+    <<: *backend
+    command: celery -A config worker -l info --concurrency 2
+    mem_limit: 768m
+
+  beat:
+    <<: *backend
+    command: celery -A config beat -l info -s /tmp/celerybeat-schedule
+    mem_limit: 256m
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 320m
+    logging: *logging
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    env_file: ${SHARED_DIR:-/home/ubuntu/mysuperstore/shared}/.env.prod
+    volumes:
+      # Postgres 18: o volume monta em /var/lib/postgresql (não em /data)
+      - pg_data:/var/lib/postgresql
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    mem_limit: 2g
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?defina API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    mem_limit: 128m
+    logging: *logging
+
+volumes:
+  pg_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

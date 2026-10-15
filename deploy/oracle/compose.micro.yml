@@ -1,0 +1,75 @@
+# MySuperStore enxuto para as VMs E2.1.Micro (1 GB) compartilhadas com o MercadinhoSys.
+# - Roda na VM pública, na rede oracle_default (a do Caddy do MercadinhoSys).
+# - Banco: database/role isolados no Postgres da VM privada, via túnel SSH
+#   já existente (172.18.0.1:15432) — DATABASE_URL no .env.prod.
+# - Serviços com prefixo mss- para não colidir com os aliases do MercadinhoSys
+#   (api, redis, postgres) na mesma rede.
+name: mysuperstore
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 5m
+    max-file: "3"
+
+x-backend: &backend
+  image: mysuperstore-backend:${RELEASE:-latest}
+  restart: unless-stopped
+  env_file: ${SHARED_DIR:-/home/ubuntu/mysuperstore/shared}/.env.prod
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+  volumes:
+    - ${SHARED_DIR:-/home/ubuntu/mysuperstore/shared}/certs:/app/certs:ro
+  networks:
+    - oracle_default
+  depends_on:
+    mss-redis:
+      condition: service_healthy
+  logging: *logging
+
+services:
+  mss-api:
+    <<: *backend
+    container_name: mysuperstore-api
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile.prod
+    command: sh -c "python manage.py collectstatic --noinput --upload-unhashed-files >/dev/null && exec daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/',timeout=5).status==200 else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    mem_limit: 320m
+
+  # Worker com beat embutido e pool solo: um único processo Python
+  mss-worker:
+    <<: *backend
+    container_name: mysuperstore-worker
+    command: celery -A config worker -B --pool=solo -l info -s /tmp/celerybeat-schedule
+    mem_limit: 320m
+
+  mss-redis:
+    image: redis:7-alpine
+    container_name: mysuperstore-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 24mb --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    networks:
+      - oracle_default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    mem_limit: 48m
+    logging: *logging
+
+networks:
+  oracle_default:
+    external: true
+
+volumes:
+  redis_data:
