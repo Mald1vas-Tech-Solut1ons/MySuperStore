@@ -24,6 +24,10 @@ set -euo pipefail
 cd "$APP/releases/$RELEASE/deploy/oracle"
 set -a; . "$APP/shared/deploy.env"; set +a
 export RELEASE API_DOMAIN
+# COMPOSE_FILE (lido pelo compose), API_SVC e DEP_SVCS vêm do deploy.env
+API_SVC=${API_SVC:-api}
+DEP_SVCS=${DEP_SVCS:-postgres redis}
+export COMPOSE_FILE=${COMPOSE_FILE:-compose.yml}
 
 wait_healthy() {
   for _ in $(seq 1 60); do
@@ -37,14 +41,13 @@ wait_healthy() {
 }
 
 echo "==> Build"
-sudo -E docker compose build api
+sudo -E docker compose build "$API_SVC"
 # latest = release ativa (comandos manuais de compose sem RELEASE usam esta tag)
 sudo docker tag "mysuperstore-backend:$RELEASE" mysuperstore-backend:latest
-sudo -E docker compose up -d postgres redis
-wait_healthy postgres
-wait_healthy redis
+sudo -E docker compose up -d $DEP_SVCS
+for svc in $DEP_SVCS; do wait_healthy "$svc"; done
 echo "==> Migrations"
-sudo -E docker compose run --rm --no-deps api python manage.py migrate --noinput
+sudo -E docker compose run --rm --no-deps "$API_SVC" python manage.py migrate --noinput
 echo "==> Subindo stack"
 sudo -E docker compose up -d --remove-orphans
 ln -sfn "$APP/releases/$RELEASE" "$APP/current"
@@ -63,5 +66,5 @@ for _ in $(seq 1 30); do
   sleep 5
 done
 echo "Smoke test falhou. Últimos logs da api:" >&2
-"${SSH[@]}" "cd $APP/current/deploy/oracle && set -a && . $APP/shared/deploy.env && set +a && sudo -E docker compose logs --tail 80 api" >&2 || true
+"${SSH[@]}" "cd $APP/current/deploy/oracle && set -a && . $APP/shared/deploy.env && set +a && sudo -E docker compose logs --tail 80" >&2 || true
 exit 1

@@ -38,6 +38,9 @@ def main():
     ap.add_argument("--src", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--keep")
+    ap.add_argument("--micro", action="store_true",
+                    help="VMs Micro: banco no Postgres da VM privada via túnel; senha em --db-pass-file")
+    ap.add_argument("--db-pass-file")
     a = ap.parse_args()
 
     src = parse(a.src)
@@ -64,10 +67,23 @@ def main():
         "EFI_PIX_CERT_PROD": "/app/certs/producao.p12",
     })
 
+    deploy = f"API_DOMAIN={domain}\n"
+    if a.micro:
+        db_pass = Path(a.db_pass_file).read_text().strip()
+        for k in ("POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"):
+            env.pop(k)
+        env.update({
+            "DATABASE_URL": f"postgres://mysuperstore:{db_pass}@172.18.0.1:15432/mysuperstore?sslmode=disable",
+            "REDIS_URL": "redis://mss-redis:6379/2",
+            "CELERY_BROKER_URL": "redis://mss-redis:6379/0",
+            "CELERY_RESULT_BACKEND": "redis://mss-redis:6379/1",
+        })
+        deploy += "COMPOSE_FILE=compose.micro.yml\nAPI_SVC=mss-api\nDEP_SVCS=mss-redis\n"
+
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / ".env.prod").write_text("".join(f"{k}={v}\n" for k, v in env.items()), encoding="utf-8", newline="\n")
-    (out / "deploy.env").write_text(f"API_DOMAIN={domain}\n", encoding="utf-8", newline="\n")
+    (out / "deploy.env").write_text(deploy, encoding="utf-8", newline="\n")
     print(f"OK: {len(env)} variáveis em .env.prod; API_DOMAIN={domain}")
 
 
