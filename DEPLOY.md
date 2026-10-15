@@ -2,6 +2,42 @@
 
 Produção: frontend Next.js na Vercel + backend em uma VM Oracle Cloud Always Free, via Docker Compose. Substitui o antigo Railway (backend) + Neon (Postgres); `railway.toml` foi removido.
 
+## 0. Topologia atual: VMs Micro compartilhadas (em produção)
+
+A A1.Flex (ARM grátis) não pôde ser criada: São Paulo sem capacidade (`Out of host capacity`). O plano A1 (`compose.yml`, seções 1–5) fica para quando houver capacidade. Hoje o MySuperStore roda nas 2 VMs `VM.Standard.E2.1.Micro` (1 GB RAM cada, Always Free) que também hospedam o MercadinhoSys e o maldivas-leads.
+
+| VM | Endereço | Hospeda |
+| --- | --- | --- |
+| `mercadinhosys-prod` | 144.22.151.18 (pública) | MySuperStore (API/worker/Redis), MercadinhoSys, maldivas-leads, Caddy |
+| `mercadinhosys-db-candidate` | 10.0.0.84 (privada, sem internet) | Postgres 15 do MercadinhoSys + banco/role `mysuperstore` |
+
+Containers na VM pública (`deploy/oracle/compose.micro.yml`, rede externa `oracle_default`; prefixo `mss-` para não colidir com os aliases `api`/`redis`/`postgres` do MercadinhoSys):
+
+| Container | Descrição | Limite |
+| --- | --- | --- |
+| `mysuperstore-api` | Django ASGI via daphne (HTTP + WebSocket) | 320 MB |
+| `mysuperstore-worker` | Celery com beat embutido, pool `solo` (um processo) | 320 MB |
+| `mysuperstore-redis` | Redis, `maxmemory` 24 MB | 48 MB |
+
+**HTTPS:** bloco `mysuperstore-api.144.22.151.18.sslip.io` no Caddyfile do MercadinhoSys (`~/mercadinhosys/infra/oracle/Caddyfile`, container `oracle-caddy-1`) → `mysuperstore-api:8000`. Backup do Caddyfile anterior em `~/mysuperstore/shared/backups`. O bloco também está no repositório local do MercadinhoSys (`infra/oracle/Caddyfile`) e **precisa ser commitado lá**, senão um release do MercadinhoSys apaga a rota. Reload: `sudo docker exec oracle-caddy-1 caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile`.
+
+**Banco:** database `mysuperstore` + role `mysuperstore` (sem superusuário, `CONNECTION LIMIT 10`) no Postgres 15 da VM privada. `REVOKE CONNECT ... FROM PUBLIC` em `mysuperstore` e `mercadinhosys`: o role do MySuperStore não conecta no banco do MercadinhoSys. Acesso pelo túnel SSH já existente (`mercadinhosys-db-tunnel`, `172.18.0.1:15432 → 10.0.0.84:5432`), `sslmode=disable` (o túnel já cifra).
+
+**Dados:** migrados do Neon (PG18) com `pg_dump` plano, sem a linha `SET transaction_timeout` (inexistente no PG15). Conferência linha a linha: 52 tabelas idênticas, 668 linhas.
+
+**Memória:** VM pública tinha 317 MB disponíveis; desligados ModemManager, fwupd, udisks2 e rpcbind (fecha também a porta 111) → 357 MB. VM do banco: 535 MB disponíveis.
+
+**Ambiente e deploy:**
+
+```bash
+python deploy/oracle/build-env.py --ip 144.22.151.18 --src .env --out <pasta> --micro --db-pass-file <senha-do-role>
+bash deploy/oracle/deploy.sh 144.22.151.18
+```
+
+O `deploy.env` do modo micro define `COMPOSE_FILE=compose.micro.yml`, `API_SVC=mss-api`, `DEP_SVCS=mss-redis`.
+
+**Riscos:** tudo divide 1 GB com o MercadinhoSys; o túnel SSH é ponto único de falha dos dois sistemas; `max_connections` do Postgres é 25 no total; o `backup-db.sh` do modo A1 não se aplica aqui. Migrar para A1 quando houver capacidade (`cloudshell-create-a1.sh`).
+
 ## 1. Arquitetura
 
 ```
