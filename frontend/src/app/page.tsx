@@ -22,6 +22,8 @@ import { Footer } from "@/components/Footer";
 import { CountdownTimer } from "@/components/ui/CountdownTimer";
 import { OfficialLogo } from "@/components/Brand";
 import { WelcomeModal } from "@/components/ui/WelcomeModal";
+import { PrototypeSwitcher } from "@/components/prototype/PrototypeSwitcher";
+import { ProtoHome, PROTO_VARIANTS, isProtoVariant } from "./_prototype-home";
 
 // Mock para o banner rotativo principal (Hero)
 const heroBanners = [
@@ -70,9 +72,21 @@ export default function StorePage() {
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
       </div>
     }>
-      <WelcomeModal />
-      <StorePageContent />
+      <HomeVariantGate />
     </Suspense>
+  );
+}
+
+// PROTOTYPE — ?variant=A|B|C troca a home pelas direções de redesign (só em dev).
+function HomeVariantGate() {
+  const variant = useSearchParams().get("variant");
+  if (isProtoVariant(variant) && variant !== "atual") return <ProtoHome variant={variant} />;
+  return (
+    <>
+      {!isProtoVariant(variant) && <WelcomeModal />}
+      <StorePageContent />
+      {isProtoVariant(variant) && <PrototypeSwitcher variants={PROTO_VARIANTS} current="atual" />}
+    </>
   );
 }
 
