@@ -275,11 +275,11 @@ def notify_order_status_update(sub_order):
                 extra_info += f'<p>Seu código de rastreio é: <strong style="color:#E6B53C;">{tracking}</strong></p>'
         if estimated:
             from django.utils.formats import date_format
-            extra_info += f'<p>Previsão de entrega: <strong>{date_format(estimated, "d \de F")}</strong></p>'
+            extra_info += f'<p>Previsão de entrega: <strong>{date_format(estimated, r"d \d\e F")}</strong></p>'
     elif sub_order.status == "processing":
         extra_info = f"<p>A loja <strong>{sub_order.seller.store_name}</strong> começou a separar o seu pacote. Logo ele será despachado!</p>"
     else:
-        extra_info = f"<p>A loja <strong>{sub_order.seller.store_name}</strong> atualizou o status da entrega para: <strong style="color:#E6B53C;">{status_str}</strong>.</p>"
+        extra_info = f'<p>A loja <strong>{sub_order.seller.store_name}</strong> atualizou o status da entrega para: <strong style="color:#E6B53C;">{status_str}</strong>.</p>'
         
     html = f"""
         <p>Olá, {user.first_name}!</p>

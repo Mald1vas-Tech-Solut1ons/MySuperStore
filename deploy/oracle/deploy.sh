@@ -47,7 +47,7 @@ sudo docker tag "mysuperstore-backend:$RELEASE" mysuperstore-backend:latest
 sudo -E docker compose up -d $DEP_SVCS
 for svc in $DEP_SVCS; do wait_healthy "$svc"; done
 echo "==> Migrations"
-sudo -E docker compose run --rm --no-deps "$API_SVC" python manage.py migrate --noinput
+sudo -E docker compose run --rm -T --no-deps "$API_SVC" python manage.py migrate --noinput </dev/null
 echo "==> Subindo stack"
 sudo -E docker compose up -d --remove-orphans
 ln -sfn "$APP/releases/$RELEASE" "$APP/current"
