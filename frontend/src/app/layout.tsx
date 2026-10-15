@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Sora, Space_Mono } from "next/font/google";
+import { DM_Sans, Fraunces, Inter, Sora, Space_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
@@ -8,6 +8,10 @@ const inter = Inter({
   variable: "--font-inter",
   display: "swap",
 });
+
+// Fraunces + DM Sans — tipografia da vitrine artesanal (home do Ateliê)
+const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["SOFT", "opsz"] });
+const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dmsans", display: "swap" });
 
 // Sora — fonte display da marca Saturno (títulos, wordmark)
 const sora = Sora({
@@ -79,7 +83,6 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { BottomNav } from "@/components/BottomNav";
 import { AuthProvider } from "@/components/AuthProvider";
-import { SplashScreen } from "@/components/ui/SplashScreen";
 import { PWARegistry } from "@/components/PWARegistry";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 
@@ -90,7 +93,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${inter.variable} ${sora.variable} ${spaceMono.variable} antialiased`}>
+      <body className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${fraunces.variable} ${dmSans.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -105,7 +108,6 @@ export default function RootLayout({
                   {children}
                 </div>
                 <BottomNav />
-                <SplashScreen />
                 <PWARegistry />
                 <NotificationOptIn />
               </AuthProvider>

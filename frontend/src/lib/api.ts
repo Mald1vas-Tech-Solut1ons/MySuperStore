@@ -115,6 +115,8 @@ export const catalogApi = {
   track: (slug: string, type: "view" | "click") => api.post(`/catalog/products/${slug}/track/`, { type }),
   getCategories: () => api.get("/catalog/categories/"),
   getSellerPublicProfile: (slug: string) => api.get(`/sellers/${slug}/`),
+  // Lojas públicas; { featured: 1 } traz só as em destaque, na ordem do admin.
+  stores: (params?: Record<string, unknown>) => api.get("/sellers/", { params }),
 };
 
 export const cartApi = {

@@ -73,6 +73,17 @@ const config: Config = {
         success: { DEFAULT: "#16a34a", light: "#dcfce7" },
         warning: { DEFAULT: "#d97706", light: "#fef3c7" },
         error: { DEFAULT: "#dc2626", light: "#fee2e2" },
+        // Ateliê (vitrine artesanal): tons de parede de cal, argila e café.
+        atelie: {
+          cream: "#F4EDE3",
+          sand: "#E8DCCA",
+          wall: "#EFE6D8",
+          clay: "#A65A3A",
+          terracotta: "#C47A55",
+          olive: "#5B6146",
+          espresso: "#2A211B",
+          ink: "#1F1A17",
+        },
         // Paleta da marca Saturno (ouro premium)
         saturn: {
           50: "#FCE6A0",
@@ -91,6 +102,8 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         display: ["var(--font-sora)", "system-ui", "sans-serif"],
+        serif: ["var(--font-fraunces)", "Georgia", "serif"],
+        atelie: ["var(--font-dmsans)", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: {
