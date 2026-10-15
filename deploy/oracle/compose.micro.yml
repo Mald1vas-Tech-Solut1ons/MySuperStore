@@ -34,7 +34,7 @@ services:
     build:
       context: ../..
       dockerfile: backend/Dockerfile.prod
-    command: sh -c "python manage.py collectstatic --noinput >/dev/null && exec daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application"
+    command: sh -c "python manage.py collectstatic --noinput --upload-unhashed-files >/dev/null && exec daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/',timeout=5).status==200 else 1)"]
       interval: 60s
