@@ -61,8 +61,11 @@ class Command(BaseCommand):
         except Exception as exc:
             raise CommandError(f"Falha ao registrar webhook: {exc}")
 
-        # O Efí responde com o objeto do webhook (ou vazio + 200/201) em caso de sucesso.
-        self.stdout.write(self.style.SUCCESS(f"OK! Resposta do Efí: {resp}"))
+        # O SDK devolve o erro como string/dict em vez de lançar exceção (ex.: 401 de
+        # credencial). Só é sucesso se o Efí ecoar a webhookUrl registrada.
+        if not (isinstance(resp, dict) and resp.get("webhookUrl")):
+            raise CommandError(f"Efí recusou o registro: {str(resp).replace(secret, '***')[:300]}")
+        self.stdout.write(self.style.SUCCESS("OK! Webhook registrado no Efí."))
         self.stdout.write(
             "Pronto. Faça um PIX real de teste — o pedido deve confirmar sozinho "
             "e o extrato sai por e-mail."
