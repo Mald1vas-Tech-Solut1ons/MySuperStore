@@ -13,6 +13,7 @@ import { ProductGrid } from "@/components/storefront/ProductGrid";
 import { AtelierVideo } from "@/components/storefront/AtelierVideo";
 import { CustomOrder } from "@/components/storefront/CustomOrder";
 import { StoresStrip } from "@/components/storefront/StoresStrip";
+import { ChatWidget } from "@/components/storefront/ChatWidget";
 import {
   type PublicStore,
   type StoreCategory,
@@ -126,6 +127,8 @@ function Storefront() {
       </main>
 
       <SiteFooter />
+
+      <ChatWidget />
 
       {productSlug && <ProductModal slug={productSlug} isOpen onClose={() => setParam("product", null)} />}
     </WallBackdrop>
