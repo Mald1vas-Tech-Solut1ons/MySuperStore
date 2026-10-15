@@ -230,6 +230,7 @@ DEFAULT_FROM_EMAIL = env("MAIL_DEFAULT_SENDER", default=EMAIL_HOST_USER)
 
 # ── Meilisearch ──────────────────────────────────────────────────────────────
 MEILI_HOST = env("MEILI_HOST", default="http://localhost:7700")
+EFI_WEBHOOK_SECRET = env("EFI_WEBHOOK_SECRET", default="")
 MEILI_MASTER_KEY = env("MEILI_MASTER_KEY", default="devmasterkey")
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────

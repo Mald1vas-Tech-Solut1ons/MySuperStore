@@ -43,14 +43,29 @@ class Command(BaseCommand):
         if not url:
             raise CommandError("Informe --url https://SEU-BACKEND/api/v1/payments/efi-webhook/")
 
-        self.stdout.write(f"Registrando webhook: {url}")
+        # O Efí concatena "/pix" ao fim da URL registrada. Com "&ignorar=" no fim, esse
+        # sufixo vira valor de parâmetro e a rota efi-webhook/ continua casando. O hmac
+        # é o segredo que o efi_webhook exige para aceitar a notificação.
+        from django.conf import settings as dj_settings
+        secret = getattr(dj_settings, "EFI_WEBHOOK_SECRET", "")
+        if not secret:
+            raise CommandError("Defina EFI_WEBHOOK_SECRET no ambiente antes de registrar o webhook.")
+        url = url.split("?", 1)[0]
+        if not url.endswith("/"):
+            url += "/"
+        url = f"{url}?hmac={secret}&ignorar="
+
+        self.stdout.write(f"Registrando webhook: {url.split('?', 1)[0]}?hmac=***&ignorar=")
         try:
             resp = EfiPixService.config_webhook(url)
         except Exception as exc:
             raise CommandError(f"Falha ao registrar webhook: {exc}")
 
-        # O Efí responde com o objeto do webhook (ou vazio + 200/201) em caso de sucesso.
-        self.stdout.write(self.style.SUCCESS(f"OK! Resposta do Efí: {resp}"))
+        # O SDK devolve o erro como string/dict em vez de lançar exceção (ex.: 401 de
+        # credencial). Só é sucesso se o Efí ecoar a webhookUrl registrada.
+        if not (isinstance(resp, dict) and resp.get("webhookUrl")):
+            raise CommandError(f"Efí recusou o registro: {str(resp).replace(secret, '***')[:300]}")
+        self.stdout.write(self.style.SUCCESS("OK! Webhook registrado no Efí."))
         self.stdout.write(
             "Pronto. Faça um PIX real de teste — o pedido deve confirmar sozinho "
             "e o extrato sai por e-mail."

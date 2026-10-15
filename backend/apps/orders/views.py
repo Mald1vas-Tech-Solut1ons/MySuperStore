@@ -1,4 +1,5 @@
 from rest_framework import permissions, status, viewsets
+from core.permissions import IsPlatformAdmin
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Order
@@ -245,7 +246,7 @@ class ExpirePendingPixCronView(viewsets.GenericViewSet):
     substituindo o Celery worker em ambientes serverless.
     GET /api/v1/orders/cron/expire-pix/
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsPlatformAdmin]
 
     @action(detail=False, methods=["get"])
     def run(self, request):

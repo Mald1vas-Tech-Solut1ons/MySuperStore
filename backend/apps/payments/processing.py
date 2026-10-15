@@ -72,7 +72,11 @@ def process_successful_payment(order: Order, raw_response: dict | None = None, c
         seller = sub_order.seller
 
         settled_via_split = bool(seller and seller.efi_authorized)
-        payout_status = PayoutStatus.COMPLETED if settled_via_split else PayoutStatus.PENDING
+        # Loja da casa: o dinheiro já está na conta master, que é a conta dela.
+        settled_in_master = bool(seller and seller.receives_in_master)
+        payout_status = (
+            PayoutStatus.COMPLETED if (settled_via_split or settled_in_master) else PayoutStatus.PENDING
+        )
 
         Payout.objects.create(
             sub_order=sub_order,
@@ -114,6 +118,9 @@ def settle_payout(payout: Payout) -> bool:
     if payout.status == PayoutStatus.COMPLETED:
         return False
     seller = payout.seller
+    if seller and seller.receives_in_master:
+        # Nunca enviar Pix da master para ela mesma (repasses antigos de loja da casa).
+        return False
     if not seller or not seller.pix_key:
         logger.warning("Payout %s sem chave PIX do lojista — não é possível liquidar.", payout.id)
         return False

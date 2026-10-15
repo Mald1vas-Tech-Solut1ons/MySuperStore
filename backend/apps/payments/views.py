@@ -25,6 +25,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     http_method_names = ["get", "post", "head", "options"]
 
+    def get_queryset(self):
+        # Sem isto, GET /payments/ listava os pagamentos de TODOS os usuários.
+        return Payment.objects.filter(order__user=self.request.user)
+
     def create(self, request, *args, **kwargs):
         return Response(
             {"detail": "Utilize POST /api/v1/payments/process/ para iniciar o checkout."},
@@ -198,6 +202,24 @@ def efi_webhook(request):
     """
     POST /api/v1/payments/efi-webhook/
     """
+    import hmac as _hmac
+    import logging
+    from decimal import Decimal, InvalidOperation
+
+    logger = logging.getLogger(__name__)
+
+    # O endpoint é público (o Efí não autentica por JWT). Sem prova de origem,
+    # qualquer um que soubesse um txid marcaria o pedido como pago. O segredo vai
+    # na URL registrada no Efí (register_efi_webhook já anexa ?hmac=...&ignorar=).
+    secret = getattr(settings, "EFI_WEBHOOK_SECRET", "")
+    if not secret:
+        if not settings.DEBUG:
+            logger.error("EFI_WEBHOOK_SECRET ausente — webhook Pix recusado (fail-closed).")
+            return Response({"detail": "Webhook não configurado."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    elif not _hmac.compare_digest(request.query_params.get("hmac", ""), secret):
+        logger.warning("Webhook Pix com hmac inválido (ip=%s).", request.META.get("REMOTE_ADDR"))
+        return Response({"detail": "Não autorizado."}, status=status.HTTP_401_UNAUTHORIZED)
+
     data = request.data if isinstance(request.data, dict) else {}
     for pix in data.get("pix", []) or []:
         txid = pix.get("txid")
@@ -205,6 +227,13 @@ def efi_webhook(request):
             continue
         payment = Payment.objects.filter(efi_txid=txid, method=PaymentMethod.PIX).first()
         if payment and payment.status != PaymentStatus.APPROVED:
+            try:
+                paid = Decimal(str(pix.get("valor", "0")))
+            except InvalidOperation:
+                paid = Decimal("0")
+            if paid < payment.amount:
+                logger.error("Pix %s pago a menor (%s < %s) — não confirmado.", txid, paid, payment.amount)
+                continue
             processed = process_successful_payment(
                 payment.order, raw_response={"provider": "efi", "txid": txid, "metadata": {"type": "pix"}}
             )

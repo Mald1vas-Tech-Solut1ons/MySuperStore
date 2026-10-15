@@ -12,7 +12,7 @@ from decimal import Decimal
 from unittest import mock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory
 
@@ -265,3 +265,263 @@ class PixRefundTest(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.payment.status, PaymentStatus.REFUNDED)
         self.assertEqual(self.order.status, OrderStatus.REFUNDED)
+
+
+class HouseStoreTest(TestCase):
+    """Loja da casa (receives_in_master=True): recebe direto na conta master da plataforma."""
+
+    def setUp(self):
+        self.buyer = User.objects.create(
+            email="buyer-house@test.com", first_name="Buyer", last_name="H", is_active=True
+        )
+        u_house = User.objects.create(email="house@test.com", first_name="H", last_name="S")
+        u_auth = User.objects.create(email="auth-house@test.com", first_name="S", last_name="2")
+        # Loja da casa: tem payee_code, mas recebe direto na conta master.
+        self.house = Seller.objects.create(
+            user=u_house, store_name="Loja da Casa", slug="loja-da-casa",
+            status=SellerStatus.APPROVED, efi_payee_code="7654321-0",
+            pix_key="casa@pix.com", receives_in_master=True,
+        )
+        self.seller_auth = Seller.objects.create(
+            user=u_auth, store_name="Loja Auth House", slug="loja-auth-house",
+            status=SellerStatus.APPROVED, efi_payee_code="1234567-8",
+        )
+        cat = Category.objects.create(name="Categoria Casa", slug="categoria-casa")
+
+        self.v_house = self._variant(self.house, cat, "Produto Casa", "p-casa", Decimal("100.00"))
+        self.v_auth = self._variant(self.seller_auth, cat, "Produto Auth", "p-auth", Decimal("300.00"))
+
+        self.cart = Cart.objects.create(user=self.buyer)
+        CartItem.objects.create(cart=self.cart, variant=self.v_house, quantity=1)
+        CartItem.objects.create(cart=self.cart, variant=self.v_auth, quantity=1)
+
+    def _variant(self, seller, cat, name, slug, price):
+        product = Product.objects.create(
+            seller=seller, category=cat, name=name, slug=slug,
+            base_price=price, is_available=True,
+        )
+        return ProductVariant.objects.create(
+            product=product, sku=f"{slug}-sku", stock=50, is_active=True,
+        )
+
+    def _create_order(self):
+        data = dict(ADDRESS)
+        request = APIRequestFactory().post("/api/v1/orders/", data)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        return serializer.save()
+
+    def test_loja_da_casa_nao_e_autorizada(self):
+        # (a) payee_code presente, mas receives_in_master desautoriza o split.
+        self.assertFalse(self.house.efi_authorized)
+        self.assertTrue(self.seller_auth.efi_authorized)
+
+    def test_payout_loja_da_casa_nasce_completo(self):
+        # (b) sem payee_code e sem pix_key: mesmo assim nasce COMPLETED.
+        self.house.efi_payee_code = ""
+        self.house.pix_key = ""
+        self.house.save(update_fields=["efi_payee_code", "pix_key"])
+
+        order = self._create_order()
+        Payment.objects.create(
+            order=order, method=PaymentMethod.PIX, amount=order.total,
+            status=PaymentStatus.PENDING,
+        )
+        processed = process_successful_payment(
+            order, raw_response={"provider": "efi", "metadata": {"type": "pix"}}
+        )
+        self.assertTrue(processed)
+
+        payout_house = Payout.objects.get(seller=self.house)
+        self.assertEqual(payout_house.status, PayoutStatus.COMPLETED)
+        self.assertIsNotNone(payout_house.processed_at)
+
+    @mock.patch("apps.payments.services.EfiPixService.is_configured", return_value=True)
+    @mock.patch("apps.payments.services.EfiPixService.send_to_seller")
+    def test_liquidacao_pix_nao_envia_para_loja_da_casa(self, mock_send, _cfg):
+        # (c) PENDING e com pix_key, mas é loja da casa: não dispara Pix Envio.
+        from apps.orders.models import Order, SubOrder
+        from apps.payments.processing import settle_payout
+
+        order = Order.objects.create(
+            user=None, order_number="20260626-8888",
+            subtotal=Decimal("100.00"), total=Decimal("100.00"),
+            address_recipient="x", address_cep="01001000", address_logradouro="r",
+            address_numero="1", address_bairro="c", address_cidade="SP", address_uf="SP",
+        )
+        sub = SubOrder.objects.create(
+            order=order, seller=self.house,
+            subtotal=Decimal("100.00"), commission=Decimal("12.00"), seller_amount=Decimal("88.00"),
+        )
+        payout = Payout.objects.create(
+            sub_order=sub, seller=self.house, amount=Decimal("88.00"),
+            status=PayoutStatus.PENDING,
+        )
+
+        self.assertFalse(settle_payout(payout))
+        mock_send.assert_not_called()
+
+    def test_splits_cartao_ignoram_loja_da_casa(self):
+        # (d) loja da casa tem payee_code, mas fica fora dos splits do cartão.
+        from apps.payments.services import EfiCardService
+
+        order = self._create_order()
+        splits = list(EfiCardService._build_splits(order))
+        self.assertEqual(len(splits), 1)
+        self.assertFalse(any("7654321-0" in str(s) for s in splits))
+
+
+class FeaturedStoreTest(TestCase):
+    """Vitrine da home: ordem de destaque definida pelo admin, sem deploy."""
+
+    def test_destaque_ordena_e_filtra(self):
+        from rest_framework.test import APIClient
+
+        mk = lambda slug, rank: Seller.objects.create(
+            user=User.objects.create(email=f"{slug}@t.com", first_name="x", last_name="y"),
+            store_name=slug, slug=slug, status=SellerStatus.APPROVED, featured_rank=rank,
+        )
+        mk("sem-destaque", None)
+        mk("segunda", 2)
+        mk("principal", 1)
+
+        client = APIClient()
+        res = client.get("/api/v1/sellers/")
+        rows = res.data["results"] if isinstance(res.data, dict) else res.data
+        self.assertEqual([r["slug"] for r in rows][:2], ["principal", "segunda"])
+
+        res = client.get("/api/v1/sellers/?featured=1")
+        rows = res.data["results"] if isinstance(res.data, dict) else res.data
+        self.assertEqual([r["slug"] for r in rows], ["principal", "segunda"])
+
+
+class SecurityHardeningTest(TestCase):
+    """Webhook Pix com prova de origem, isolamento de pagamentos e catálogo só de lojas aprovadas."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        from apps.orders.models import Order
+
+        self.client_api = APIClient()
+        self.user_a = User.objects.create(email="a@sec.com", first_name="A", last_name="A")
+        self.user_b = User.objects.create(email="b@sec.com", first_name="B", last_name="B")
+        self.order = Order.objects.create(
+            user=self.user_a, order_number="20261015-0001",
+            subtotal=Decimal("100.00"), total=Decimal("100.00"),
+            address_recipient="x", address_cep="01001000", address_logradouro="r",
+            address_numero="1", address_bairro="c", address_cidade="SP", address_uf="SP",
+        )
+        self.payment = Payment.objects.create(
+            order=self.order, method=PaymentMethod.PIX, amount=Decimal("100.00"),
+            status=PaymentStatus.PENDING, efi_txid="TX1",
+        )
+
+    def _hook(self, qs, valor="100.00"):
+        return self.client_api.post(
+            f"/api/v1/payments/efi-webhook/{qs}", {"pix": [{"txid": "TX1", "valor": valor}]}, format="json"
+        )
+
+    @override_settings(EFI_WEBHOOK_SECRET="s3cr3t")
+    def test_webhook_hmac_invalido_recusa(self):
+        self.assertEqual(self._hook("?hmac=errado").status_code, 401)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, PaymentStatus.PENDING)
+
+    @override_settings(EFI_WEBHOOK_SECRET="s3cr3t")
+    @mock.patch("apps.payments.views.dispatch_post_payment_tasks")
+    def test_webhook_hmac_valido_confirma(self, _dispatch):
+        self.assertEqual(self._hook("?hmac=s3cr3t&ignorar=/pix").status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, PaymentStatus.APPROVED)
+
+    @override_settings(EFI_WEBHOOK_SECRET="s3cr3t")
+    def test_webhook_valor_menor_nao_confirma(self):
+        self.assertEqual(self._hook("?hmac=s3cr3t", valor="1.00").status_code, 200)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.status, PaymentStatus.PENDING)
+
+    @override_settings(EFI_WEBHOOK_SECRET="", DEBUG=False)
+    def test_webhook_sem_segredo_em_producao_fecha(self):
+        self.assertEqual(self._hook("").status_code, 503)
+
+    def test_usuario_nao_lista_pagamento_de_outro(self):
+        self.client_api.force_authenticate(self.user_b)
+        res = self.client_api.get("/api/v1/payments/")
+        rows = res.data["results"] if isinstance(res.data, dict) else res.data
+        self.assertNotIn(str(self.payment.id), [str(r["id"]) for r in rows])
+
+    def test_catalogo_oculta_loja_suspensa(self):
+        cat = Category.objects.create(name="Cat Sec", slug="cat-sec")
+        for slug, st in (("ok", SellerStatus.APPROVED), ("susp", SellerStatus.SUSPENDED)):
+            s = Seller.objects.create(
+                user=User.objects.create(email=f"{slug}@sec.com", first_name="s", last_name="s"),
+                store_name=f"Loja {slug}", slug=f"loja-{slug}", status=st,
+            )
+            Product.objects.create(seller=s, category=cat, name=f"P {slug}", slug=f"p-{slug}",
+                                   base_price=Decimal("10.00"), is_available=True)
+        res = self.client_api.get("/api/v1/catalog/products/")
+        rows = res.data["results"] if isinstance(res.data, dict) else res.data
+        slugs = [r["slug"] for r in rows]
+        self.assertIn("p-ok", slugs)
+        self.assertNotIn("p-susp", slugs)
+
+
+class CouponUsageTest(TestCase):
+    """O pedido revalida o cupom dentro da transação e consome 1 uso."""
+
+    def setUp(self):
+        from rest_framework.exceptions import ValidationError
+
+        self.ValidationError = ValidationError
+        self.buyer = User.objects.create(email="cupom@test.com", first_name="C", last_name="U", is_active=True)
+        seller = Seller.objects.create(
+            user=User.objects.create(email="loja-cupom@test.com", first_name="L", last_name="C"),
+            store_name="Loja Cupom", slug="loja-cupom", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat Cupom", slug="cat-cupom")
+        product = Product.objects.create(seller=seller, category=cat, name="Bolsa", slug="bolsa-cupom",
+                                         base_price=Decimal("200.00"), is_available=True)
+        self.variant = ProductVariant.objects.create(product=product, sku="bolsa-cupom-un", stock=50, is_active=True)
+        now = timezone.now()
+        self.coupon = Coupon.objects.create(
+            code="BEMVINDA", discount_percentage=Decimal("10"), valid_from=now - timedelta(days=1),
+            valid_to=now + timedelta(days=30), active=True, max_uses=1,
+        )
+
+    def _order(self, code="BEMVINDA"):
+        cart, _ = Cart.objects.get_or_create(user=self.buyer)
+        cart.items.all().delete()
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+        data = dict(ADDRESS, coupon_code=code)
+        request = APIRequestFactory().post("/api/v1/orders/", data)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        return serializer.save()
+
+    def test_uso_e_contado(self):
+        order = self._order()
+        self.coupon.refresh_from_db()
+        self.assertEqual(self.coupon.current_uses, 1)
+        self.assertEqual(order.total, Decimal("180.00"))
+
+    def test_limite_esgotado_bloqueia(self):
+        self.coupon.current_uses = 1
+        self.coupon.save(update_fields=["current_uses"])
+        with self.assertRaises(self.ValidationError):
+            self._order()
+
+    def test_primeira_compra_bloqueia_segunda(self):
+        self.coupon.max_uses = None
+        self.coupon.is_first_purchase_only = True
+        self.coupon.save(update_fields=["max_uses", "is_first_purchase_only"])
+        self._order()
+        with self.assertRaises(self.ValidationError):
+            self._order()
+
+    def test_fora_da_vigencia_recusa(self):
+        self.coupon.valid_to = timezone.now() - timedelta(minutes=1)
+        self.coupon.save(update_fields=["valid_to"])
+        with self.assertRaises(self.ValidationError):
+            self._order()

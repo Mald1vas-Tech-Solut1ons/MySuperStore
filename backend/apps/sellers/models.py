@@ -81,6 +81,19 @@ class Seller(models.Model):
     efi_payee_code = models.CharField(max_length=100, blank=True, help_text="Identificador de Conta Digital Efí para repasse (Split)")
     # Dados bancários para repasse manual (fallback)
     pix_key = models.CharField(max_length=150, blank=True)
+    # Loja da casa: a venda já cai inteira na conta master da plataforma (EFI_PIX_KEY),
+    # que é a conta do próprio dono. Sem split e sem Pix Envio — o repasse nasce
+    # liquidado. Só o admin liga isto (não entra em nenhum serializer do lojista).
+    receives_in_master = models.BooleanField(
+        default=False,
+        help_text="Loja da casa: recebe direto na conta Efí master (sem split nem repasse).",
+    )
+    # Vitrine da home: o admin escolhe quem aparece em destaque e em que ordem,
+    # sem deploy — funciona com 1 loja hoje e N amanhã.
+    featured_rank = models.PositiveSmallIntegerField(
+        null=True, blank=True, db_index=True,
+        help_text="Destaque na home: 1 = loja principal, 2, 3… Vazio = sem destaque.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -98,7 +111,9 @@ class Seller(models.Model):
 
     @property
     def efi_authorized(self):
-        return bool(self.efi_payee_code)
+        # Loja da casa nunca entra em split: repassar da master para a própria
+        # master é rejeitado pelo Efí.
+        return bool(self.efi_payee_code) and not self.receives_in_master
 
 
 class ChatRoom(models.Model):

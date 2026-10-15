@@ -27,7 +27,8 @@ export function BottomNav() {
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchNotifications]);
 
-  if (HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+  // A home do Ateliê tem navegação própria (menu em tela cheia); a barra inferior some nela.
+  if (pathname === "/" || HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
 
   const accountHref = isAuthenticated ? "/dashboard/account" : "/login";
 

@@ -187,8 +187,26 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             discount = 0
             coupon = None
             if coupon_code:
-                from apps.orders.models import Coupon
-                coupon = Coupon.objects.get(code=coupon_code)
+                from django.db.models import F
+                from apps.orders.models import Coupon, Order as OrderModel
+
+                # O "aplicar cupom" do carrinho é só consultivo: aqui, dentro da
+                # transação e com o cupom travado, revalida tudo e consome 1 uso.
+                # Sem isto o contador nunca subia e max_uses/1ª compra eram burláveis.
+                coupon = Coupon.objects.select_for_update().filter(code=coupon_code).first()
+                now = timezone.now()
+                if not coupon or not coupon.active or not (coupon.valid_from <= now <= coupon.valid_to):
+                    raise serializers.ValidationError({"coupon_code": "Cupom inválido, inativo ou fora da vigência."})
+                if coupon.max_uses is not None and coupon.current_uses >= coupon.max_uses:
+                    raise serializers.ValidationError({"coupon_code": "Este cupom esgotou o limite de usos."})
+                if coupon.min_cart_value and Decimal(str(subtotal)) < coupon.min_cart_value:
+                    raise serializers.ValidationError({"coupon_code": f"Este cupom exige um valor mínimo de R$ {coupon.min_cart_value}."})
+                if coupon.is_first_purchase_only and OrderModel.objects.filter(user=user).exists():
+                    raise serializers.ValidationError({"coupon_code": "Este cupom é válido apenas para a primeira compra."})
+                if coupon.seller and not any(item.variant.product.seller_id == coupon.seller_id for item in cart_items):
+                    raise serializers.ValidationError({"coupon_code": "Este cupom não vale para os produtos do carrinho."})
+                Coupon.objects.filter(pk=coupon.pk).update(current_uses=F("current_uses") + 1)
+
                 if coupon.discount_percentage:
                     # Discount only applies to the seller's items if it's a seller coupon
                     if coupon.seller:
