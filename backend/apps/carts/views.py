@@ -1,4 +1,5 @@
 from rest_framework import generics, permissions, status
+from core.permissions import IsPlatformAdmin
 from rest_framework.response import Response
 from apps.catalog.models import ProductVariant
 from .models import Cart, CartItem
@@ -166,7 +167,7 @@ class TriggerAbandonedEmailsView(APIView):
     POST /api/v1/cart/trigger-abandoned-emails/
     Dispara manualmente o envio de e-mails para carrinhos abandonados.
     """
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [IsPlatformAdmin]
 
     def post(self, request):
         result = send_abandoned_cart_emails_task()

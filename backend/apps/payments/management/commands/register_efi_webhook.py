@@ -43,7 +43,19 @@ class Command(BaseCommand):
         if not url:
             raise CommandError("Informe --url https://SEU-BACKEND/api/v1/payments/efi-webhook/")
 
-        self.stdout.write(f"Registrando webhook: {url}")
+        # O Efí concatena "/pix" ao fim da URL registrada. Com "&ignorar=" no fim, esse
+        # sufixo vira valor de parâmetro e a rota efi-webhook/ continua casando. O hmac
+        # é o segredo que o efi_webhook exige para aceitar a notificação.
+        from django.conf import settings as dj_settings
+        secret = getattr(dj_settings, "EFI_WEBHOOK_SECRET", "")
+        if not secret:
+            raise CommandError("Defina EFI_WEBHOOK_SECRET no ambiente antes de registrar o webhook.")
+        url = url.split("?", 1)[0]
+        if not url.endswith("/"):
+            url += "/"
+        url = f"{url}?hmac={secret}&ignorar="
+
+        self.stdout.write(f"Registrando webhook: {url.split('?', 1)[0]}?hmac=***&ignorar=")
         try:
             resp = EfiPixService.config_webhook(url)
         except Exception as exc:

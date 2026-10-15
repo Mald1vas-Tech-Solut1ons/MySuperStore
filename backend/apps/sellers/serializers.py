@@ -24,6 +24,7 @@ class SellerPublicSerializer(serializers.ModelSerializer):
             "id", "store_name", "slug", "description",
             "logo_url", "banner_url", "banner2_url", "banner3_url", "product_count", "avg_rating", "created_at",
             "primary_color", "video_url", "presentation_video_url", "physical_address", "business_hours",
+            "featured_rank",
         ]
 
     def get_presentation_video_url(self, obj):
