@@ -1,0 +1,18 @@
+# HTTPS automático (Let's Encrypt). API_DOMAIN vem do shared/deploy.env.
+{$API_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 25MB
+	}
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+	# WebSocket (/ws/*) passa direto pelo reverse_proxy
+	reverse_proxy api:8000
+	log {
+		output stdout
+		format console
+	}
+}

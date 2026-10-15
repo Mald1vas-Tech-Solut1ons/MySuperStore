@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diário do Postgres do MySuperStore (03:00 São Paulo)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Sao_Paulo
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

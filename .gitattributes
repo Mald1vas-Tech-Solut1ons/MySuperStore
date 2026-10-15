@@ -1,0 +1,4 @@
+deploy/oracle/*.sh text eol=lf
+deploy/oracle/Caddyfile text eol=lf
+deploy/oracle/*.service text eol=lf
+deploy/oracle/*.timer text eol=lf
