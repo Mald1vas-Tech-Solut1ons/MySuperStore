@@ -41,6 +41,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.users",
     "apps.sellers",
+    "apps.assistant",
     "apps.catalog",
     "apps.carts",
     "apps.orders",
@@ -231,6 +232,12 @@ DEFAULT_FROM_EMAIL = env("MAIL_DEFAULT_SENDER", default=EMAIL_HOST_USER)
 # ── Meilisearch ──────────────────────────────────────────────────────────────
 MEILI_HOST = env("MEILI_HOST", default="http://localhost:7700")
 EFI_WEBHOOK_SECRET = env("EFI_WEBHOOK_SECRET", default="")
+
+# Assistente de atendimento (Gemini) — chave só no servidor; modelos em ordem de fallback.
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODELS = env.list("GEMINI_MODELS", default=["gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"])
+BACKEND_PUBLIC_URL = env("BACKEND_PUBLIC_URL", default="http://localhost:8000")
+REST_FRAMEWORK.setdefault("DEFAULT_THROTTLE_RATES", {})["assistant"] = env("ASSISTANT_RATE", default="12/min")
 MEILI_MASTER_KEY = env("MEILI_MASTER_KEY", default="devmasterkey")
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────
