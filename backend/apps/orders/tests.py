@@ -465,3 +465,63 @@ class SecurityHardeningTest(TestCase):
         slugs = [r["slug"] for r in rows]
         self.assertIn("p-ok", slugs)
         self.assertNotIn("p-susp", slugs)
+
+
+class CouponUsageTest(TestCase):
+    """O pedido revalida o cupom dentro da transação e consome 1 uso."""
+
+    def setUp(self):
+        from rest_framework.exceptions import ValidationError
+
+        self.ValidationError = ValidationError
+        self.buyer = User.objects.create(email="cupom@test.com", first_name="C", last_name="U", is_active=True)
+        seller = Seller.objects.create(
+            user=User.objects.create(email="loja-cupom@test.com", first_name="L", last_name="C"),
+            store_name="Loja Cupom", slug="loja-cupom", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat Cupom", slug="cat-cupom")
+        product = Product.objects.create(seller=seller, category=cat, name="Bolsa", slug="bolsa-cupom",
+                                         base_price=Decimal("200.00"), is_available=True)
+        self.variant = ProductVariant.objects.create(product=product, sku="bolsa-cupom-un", stock=50, is_active=True)
+        now = timezone.now()
+        self.coupon = Coupon.objects.create(
+            code="BEMVINDA", discount_percentage=Decimal("10"), valid_from=now - timedelta(days=1),
+            valid_to=now + timedelta(days=30), active=True, max_uses=1,
+        )
+
+    def _order(self, code="BEMVINDA"):
+        cart, _ = Cart.objects.get_or_create(user=self.buyer)
+        cart.items.all().delete()
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+        data = dict(ADDRESS, coupon_code=code)
+        request = APIRequestFactory().post("/api/v1/orders/", data)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        return serializer.save()
+
+    def test_uso_e_contado(self):
+        order = self._order()
+        self.coupon.refresh_from_db()
+        self.assertEqual(self.coupon.current_uses, 1)
+        self.assertEqual(order.total, Decimal("180.00"))
+
+    def test_limite_esgotado_bloqueia(self):
+        self.coupon.current_uses = 1
+        self.coupon.save(update_fields=["current_uses"])
+        with self.assertRaises(self.ValidationError):
+            self._order()
+
+    def test_primeira_compra_bloqueia_segunda(self):
+        self.coupon.max_uses = None
+        self.coupon.is_first_purchase_only = True
+        self.coupon.save(update_fields=["max_uses", "is_first_purchase_only"])
+        self._order()
+        with self.assertRaises(self.ValidationError):
+            self._order()
+
+    def test_fora_da_vigencia_recusa(self):
+        self.coupon.valid_to = timezone.now() - timedelta(minutes=1)
+        self.coupon.save(update_fields=["valid_to"])
+        with self.assertRaises(self.ValidationError):
+            self._order()
