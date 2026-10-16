@@ -315,9 +315,17 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                         total=item.subtotal,
                     )
 
-                    # Decrementa o estoque real no banco
-                    item.variant.stock -= item.quantity
-                    item.variant.save(update_fields=["stock"])
+                    # Baixa atômica e condicional: só desconta se ainda houver unidades no banco
+                    # AGORA (não no objeto lido antes). Duas compras simultâneas da mesma peça
+                    # única: uma passa, a outra recebe 'esgotou' e o pedido inteiro é desfeito.
+                    from django.db.models import F as _F
+                    baixou = ProductVariant.objects.filter(
+                        id=item.variant_id, stock__gte=item.quantity
+                    ).update(stock=_F("stock") - item.quantity)
+                    if not baixou:
+                        raise serializers.ValidationError(
+                            {"detail": f"{item.variant.product.name} acabou de esgotar. Atualize sua sacola."}
+                        )
 
                     # Reserva estoque no Redis com TTL de 15 minutos (900s)
                     if redis_client:

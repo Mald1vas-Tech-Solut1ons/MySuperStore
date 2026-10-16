@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 
 import { useEffect, useState } from "react";
+import { whatsappLink } from "@/config/brand";
 import { ordersApi, reviewApi, returnsApi, paymentsApi } from "@/lib/api";
 import { Loader2, Package, CheckCircle2, Truck, Clock, Star, Send, MessageCircle, X, RefreshCcw, Store, Ban, Undo2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -113,18 +114,12 @@ export default function OrdersPage() {
     }
   };
 
-  const handleRefund = async (order: any) => {
-    if (!order.payment?.id) return;
-    if (!confirm(`Solicitar estorno total do pedido ${order.order_number}?`)) return;
-    setActioningId(order.id);
-    try {
-      await paymentsApi.refund(order.payment.id);
-      await loadOrders();
-    } catch (err: any) {
-      alert(err?.response?.data?.detail || "Erro ao estornar pedido.");
-    } finally {
-      setActioningId(null);
-    }
+  // Devolução passa pela loja (CDC: 7 dias): ela confere a peça e faz o estorno.
+  // O cliente não estorna sozinho — o botão abre a conversa com o ateliê já com o pedido.
+  const handleReturnRequest = (order: any) => {
+    const link = whatsappLink(`Olá! Quero pedir a devolução do pedido ${order.order_number}.`);
+    if (link) window.open(link, "_blank", "noopener,noreferrer");
+    else alert("Fale com o ateliê para pedir a devolução deste pedido.");
   };
 
   const getStatusIcon = (status: string) => {
@@ -200,12 +195,11 @@ export default function OrdersPage() {
                   )}
                   {["confirmed", "processing"].includes(order.status) && order.payment?.status === "approved" && (
                     <button
-                      onClick={() => handleRefund(order)}
-                      disabled={actioningId === order.id}
+                      onClick={() => handleReturnRequest(order)}
                       className="text-xs flex items-center gap-1.5 px-3 py-2 rounded-lg border border-amber-500/30 text-amber-500 hover:bg-amber-500/10 transition-colors font-semibold disabled:opacity-50"
                     >
-                      {actioningId === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
-                      Estornar
+                      <Undo2 className="h-3.5 w-3.5" />
+                      Pedir devolução
                     </button>
                   )}
                   {order.status === "refunded" && (
