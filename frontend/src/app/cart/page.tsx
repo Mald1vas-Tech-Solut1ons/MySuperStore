@@ -4,7 +4,9 @@ export const dynamic = "force-dynamic";
 
 
 import { useEffect, useState } from "react";
-import { Header } from "@/components/Header";
+import { SiteHeader as Header } from "@/components/storefront/SiteHeader";
+import { SiteFooter } from "@/components/storefront/SiteFooter";
+import { TrustBadges } from "@/components/storefront/TrustBadges";
 import { cartApi } from "@/lib/api";
 import { Cart } from "@/types";
 import { useCartStore } from "@/store/cartStore";
@@ -86,7 +88,7 @@ export default function CartPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
         <Header />
         <main className="flex-grow flex items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -96,7 +98,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
       <Header />
 
       <main className="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -316,7 +318,9 @@ export default function CartPage() {
 
           </div>
         )}
+        <TrustBadges className="mt-12" />
       </main>
+      <SiteFooter />
 
       {selectedProductSlug && (
         <ProductModal 
