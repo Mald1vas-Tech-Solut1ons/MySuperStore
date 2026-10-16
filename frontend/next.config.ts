@@ -25,7 +25,12 @@ const nextConfig: NextConfig = {
         source: '/dashboard/recap',
         destination: '/dashboard',
         permanent: true,
-      }
+      },
+      // O Ateliê não trabalha com "oferta relâmpago": essas rotas voltam para a vitrine.
+      { source: '/super-ofertas', destination: '/', permanent: false },
+      { source: '/store/promotions', destination: '/', permanent: false },
+      // Vitrine única: a página de cada loja é a home filtrada por ela.
+      { source: '/s/:slug', destination: '/?loja=:slug', permanent: false },
     ];
   },
   async rewrites() {

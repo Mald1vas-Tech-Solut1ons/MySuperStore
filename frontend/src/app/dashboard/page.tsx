@@ -71,10 +71,10 @@ export default function BuyerRecapDashboard() {
         </div>
         
         <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-widest mb-4 border border-white/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/[0.04] backdrop-blur-md text-xs font-bold uppercase tracking-widest mb-4 border border-border">
             <Sparkles className="h-3 w-3" /> Meu Universo 2026
           </span>
-          <h1 className="text-4xl md:text-6xl font-display font-black leading-tight mb-4 text-white">
+          <h1 className="text-4xl md:text-6xl font-display font-black leading-tight mb-4 text-foreground">
             E aí, <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400">{user?.first_name}</span>!
             <br/>Pronto para o Recap?
           </h1>

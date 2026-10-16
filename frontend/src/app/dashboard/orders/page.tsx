@@ -371,7 +371,7 @@ export default function OrdersPage() {
       <AnimatePresence>
         {reviewingItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReviewingItem(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReviewingItem(null)} className="absolute inset-0 bg-black/5 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-card rounded-2xl p-6 shadow-2xl border border-border/50 z-10">
               <h3 className="text-xl font-bold mb-1">Avaliar Produto</h3>
               <p className="text-sm text-muted-foreground mb-6 line-clamp-1">{reviewingItem.product_name}</p>
@@ -421,7 +421,7 @@ export default function OrdersPage() {
       <AnimatePresence>
         {returningItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReturningItem(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setReturningItem(null)} className="absolute inset-0 bg-black/5 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-card rounded-2xl p-6 shadow-2xl border border-border/50 z-10">
               <h3 className="text-xl font-bold mb-1 flex items-center gap-2 text-red-500">
                 <RefreshCcw className="h-5 w-5" /> Solicitar Devolução
@@ -471,21 +471,21 @@ export default function OrdersPage() {
       <AnimatePresence>
         {chattingWith && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setChattingWith(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }} className="relative w-full max-w-md bg-[#0a0a14] rounded-3xl shadow-2xl border border-white/[0.05] z-10 overflow-hidden flex flex-col h-[600px]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setChattingWith(null)} className="absolute inset-0 bg-black/5 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, y: 50, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.95 }} className="relative w-full max-w-md bg-background rounded-3xl shadow-2xl border border-border z-10 overflow-hidden flex flex-col h-[600px]">
               
               {/* Chat Header */}
-              <div className="p-4 border-b border-white/[0.05] bg-gradient-to-r from-blue-600/20 to-transparent flex items-center justify-between">
+              <div className="p-4 border-b border-border bg-gradient-to-r from-blue-600/20 to-transparent flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                     <Store className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white leading-tight">{chattingWith.seller_name}</h3>
+                    <h3 className="font-bold text-foreground leading-tight">{chattingWith.seller_name}</h3>
                     <p className="text-xs text-emerald-400 font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online agora</p>
                   </div>
                 </div>
-                <button onClick={() => setChattingWith(null)} className="p-2 text-neutral-400 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+                <button onClick={() => setChattingWith(null)} className="p-2 text-muted-foreground hover:text-foreground hover:bg-black/[0.04] rounded-full transition-colors">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -497,13 +497,13 @@ export default function OrdersPage() {
                     <div className={`px-4 py-2.5 rounded-2xl max-w-[80%] text-sm ${msg.sender === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white/[0.05] text-neutral-200 border border-white/[0.02] rounded-bl-none'}`}>
                       {msg.text}
                     </div>
-                    <span className="text-[10px] text-neutral-500 mt-1 px-1">{msg.time}</span>
+                    <span className="text-[10px] text-muted-foreground mt-1 px-1">{msg.time}</span>
                   </div>
                 ))}
               </div>
 
               {/* Chat Input */}
-              <div className="p-4 border-t border-white/[0.05] bg-black/20">
+              <div className="p-4 border-t border-border bg-black/5">
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -522,7 +522,7 @@ export default function OrdersPage() {
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
                     placeholder="Digite sua mensagem..." 
-                    className="w-full bg-[#141420] border border-white/[0.05] rounded-full pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-card border border-border rounded-full pl-4 pr-12 py-3 text-sm text-foreground focus:outline-none focus:border-blue-500 transition-colors"
                   />
                   <button type="submit" className="absolute right-2 w-8 h-8 flex items-center justify-center bg-blue-500 text-white rounded-full hover:scale-105 transition-transform disabled:opacity-50">
                     <Send className="h-4 w-4 ml-0.5" />

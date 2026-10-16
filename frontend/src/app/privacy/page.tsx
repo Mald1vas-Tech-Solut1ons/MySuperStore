@@ -5,15 +5,15 @@ import { Header } from "@/components/Header";
 
 function PrivacyContent() {
   return (
-    <div className="min-h-screen bg-[#050510] text-white pt-24 pb-20">
+    <div className="min-h-screen bg-background text-foreground pt-24 pb-20">
       <div className="max-w-4xl mx-auto px-6">
         <h1 className="text-4xl font-display font-black mb-8">Política de Privacidade</h1>
         
-        <div className="prose prose-invert max-w-none space-y-6 text-neutral-300">
+        <div className="prose prose-invert max-w-none space-y-6 text-muted-foreground">
           <p>Última atualização: 25 de Junho de 2026</p>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">1. Informações que Coletamos</h2>
+            <h2 className="text-2xl font-bold text-foreground">1. Informações que Coletamos</h2>
             <p>
               O MySuperStore coleta informações essenciais para garantir o funcionamento do nosso ecossistema e processar seus pagamentos. Isso inclui:
             </p>
@@ -26,7 +26,7 @@ function PrivacyContent() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">2. Como Usamos as Informações</h2>
+            <h2 className="text-2xl font-bold text-foreground">2. Como Usamos as Informações</h2>
             <p>
               As informações coletadas são utilizadas exclusivamente para os seguintes fins:
             </p>
@@ -39,7 +39,7 @@ function PrivacyContent() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">3. Compartilhamento de Dados</h2>
+            <h2 className="text-2xl font-bold text-foreground">3. Compartilhamento de Dados</h2>
             <p>
               O MySuperStore <strong>NÃO</strong> vende seus dados. Suas informações são compartilhadas apenas em situações estritamente necessárias:
             </p>
@@ -51,7 +51,7 @@ function PrivacyContent() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">4. Seus Direitos</h2>
+            <h2 className="text-2xl font-bold text-foreground">4. Seus Direitos</h2>
             <p>
               Você pode a qualquer momento:
             </p>
@@ -63,7 +63,7 @@ function PrivacyContent() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-white">5. Segurança</h2>
+            <h2 className="text-2xl font-bold text-foreground">5. Segurança</h2>
             <p>
               Nós utilizamos criptografia de ponta-a-ponta e tecnologias de proteção avançadas. A senha da sua conta não é acessível a nenhum de nossos desenvolvedores, e os tokens de integração (como o do Google) são armazenados em conformidade com as diretrizes de segurança da indústria.
             </p>

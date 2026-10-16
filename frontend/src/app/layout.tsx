@@ -81,7 +81,6 @@ export const viewport: Viewport = {
 
 import { ToastProvider } from "@/components/ui/Toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { BottomNav } from "@/components/BottomNav";
 import { AuthProvider } from "@/components/AuthProvider";
 import { PWARegistry } from "@/components/PWARegistry";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
@@ -103,11 +102,9 @@ export default function RootLayout({
           <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1019190620170-a86680qpdbrjgu1vk31st0lts4ju3cm5.apps.googleusercontent.com"}>
             <ToastProvider>
               <AuthProvider>
-                {/* pb-20 no mobile garante que o conteúdo não fica atrás da BottomNav */}
-                <div className="pb-20 md:pb-0">
+                <div>
                   {children}
                 </div>
-                <BottomNav />
                 <PWARegistry />
                 <NotificationOptIn />
               </AuthProvider>

@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { SaturnMark } from "@/components/Brand";
+import { SiteHeader } from "@/components/storefront/SiteHeader";
+import { WallBackdrop } from "@/components/storefront/WallBackdrop";
 import { useAuthStore } from "@/store/authStore";
 import { authApi, crmApi } from "@/lib/api";
 import { motion } from "framer-motion";
@@ -158,29 +159,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden py-12 px-4">
-      {/* Background gradients */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[450px] h-[450px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+    <WallBackdrop className="min-h-screen font-atelie text-atelie-ink">
+      <SiteHeader />
+      <div className="flex justify-center py-12 px-4">
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-lg space-y-6 p-8 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-2xl relative z-10"
+        className="w-full max-w-lg space-y-6 rounded-3xl bg-white/80 p-8 shadow-xl ring-1 ring-black/5 sm:p-10"
       >
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2.5 group mb-2">
-            <SaturnMark className="h-11 w-auto drop-shadow-[0_2px_12px_rgba(230,181,60,0.3)] group-hover:scale-105 transition-transform duration-300" />
-            <span className="font-display text-xl font-extrabold tracking-[-0.02em] text-foreground">
-              MySuperStore
-            </span>
-          </Link>
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-            Criar sua conta
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Junte-se a um ecossistema seguro e de alta performance
-          </p>
+          <h1 className="font-serif text-4xl text-atelie-ink">Criar sua conta</h1>
+          <p className="text-sm text-atelie-ink/60">Acompanhe seus pedidos, salve favoritos e compre mais rápido.</p>
         </div>
 
         {error && (
@@ -427,20 +418,20 @@ export default function RegisterPage() {
 
       {/* Gateway de Aceite Legal */}
       {showGateway && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/5 backdrop-blur-md p-4">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }} 
             animate={{ scale: 1, opacity: 1 }} 
-            className="bg-[#050510] border border-white/10 rounded-2xl w-full max-w-3xl flex flex-col max-h-[85vh] overflow-hidden shadow-[0_0_50px_rgba(230,181,60,0.15)]"
+            className="bg-background border border-border rounded-2xl w-full max-w-3xl flex flex-col max-h-[85vh] overflow-hidden shadow-[0_0_50px_rgba(230,181,60,0.15)]"
           >
-            <div className="p-6 border-b border-white/10 bg-white/5">
-              <h2 className="text-2xl font-black text-white">
+            <div className="p-6 border-b border-border bg-black/[0.04]">
+              <h2 className="text-2xl font-black text-foreground">
                 Termos de Uso e Política de Privacidade
               </h2>
-              <p className="text-sm text-neutral-400 mt-1">É obrigatória a leitura e aceite para acessar o ecossistema.</p>
+              <p className="text-sm text-muted-foreground mt-1">É obrigatória a leitura e aceite para acessar o ecossistema.</p>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-grow text-neutral-300 text-sm space-y-4 prose prose-invert">
+            <div className="p-6 overflow-y-auto flex-grow text-muted-foreground text-sm space-y-4 prose prose-invert">
                 <>
                   <p><strong>1. Aceitação dos Termos</strong><br/>Ao criar uma conta, acessar ou utilizar a MySuperStore ("Plataforma"), você ("Usuário" ou "Cliente") concorda expressamente e sem ressalvas com as condições descritas neste documento. Se você não concordar com qualquer um dos termos, você está proibido de usar ou acessar este site.</p>
                   <p><strong>2. Definição do Serviço (Marketplace)</strong><br/>A MySuperStore atua como intermediadora de negócios (Marketplace), provendo tecnologia e ambiente virtual para que Vendedores Independentes ("Lojistas") comercializem seus produtos para Clientes finais.</p>
@@ -449,7 +440,7 @@ export default function RegisterPage() {
                 </>
             </div>
 
-            <div className="p-6 border-t border-white/10 flex gap-4 bg-white/5">
+            <div className="p-6 border-t border-border flex gap-4 bg-black/[0.04]">
               <button 
                 type="button"
                 onClick={() => setShowGateway(false)}
@@ -469,6 +460,7 @@ export default function RegisterPage() {
         </div>
       )}
 
-    </div>
+      </div>
+    </WallBackdrop>
   );
 }

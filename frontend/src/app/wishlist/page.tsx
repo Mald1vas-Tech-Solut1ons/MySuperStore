@@ -58,7 +58,7 @@ export default function WishlistPage() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-[#05050a] text-white py-24 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background text-foreground py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-display font-bold mb-8 flex items-center gap-3">
           <Heart className="w-8 h-8 text-rose-500 fill-rose-500" />
@@ -67,17 +67,17 @@ export default function WishlistPage() {
 
         {loading ? (
           <div className="animate-pulse flex gap-4">
-            <div className="w-32 h-32 bg-white/5 rounded-xl"></div>
+            <div className="w-32 h-32 bg-black/[0.04] rounded-xl"></div>
             <div className="flex-1 space-y-4 py-1">
-              <div className="h-4 bg-white/5 rounded w-3/4"></div>
-              <div className="h-4 bg-white/5 rounded w-1/2"></div>
+              <div className="h-4 bg-black/[0.04] rounded w-3/4"></div>
+              <div className="h-4 bg-black/[0.04] rounded w-1/2"></div>
             </div>
           </div>
         ) : wishlist.length === 0 ? (
-          <div className="bg-[#0a0a14] border border-white/5 rounded-3xl p-12 text-center flex flex-col items-center">
-            <Heart className="w-16 h-16 text-neutral-600 mb-4" />
-            <h2 className="text-xl font-bold text-neutral-300 mb-2">Sua lista de desejos está vazia</h2>
-            <p className="text-neutral-500 mb-6">Explore nosso catálogo e salve os produtos que você mais gosta.</p>
+          <div className="bg-background border border-border rounded-3xl p-12 text-center flex flex-col items-center">
+            <Heart className="w-16 h-16 text-muted-foreground mb-4" />
+            <h2 className="text-xl font-bold text-muted-foreground mb-2">Sua lista de desejos está vazia</h2>
+            <p className="text-muted-foreground mb-6">Explore nosso catálogo e salve os produtos que você mais gosta.</p>
             <a href="/" className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl transition-all">
               Explorar Produtos
             </a>
@@ -87,9 +87,9 @@ export default function WishlistPage() {
             {wishlist.map((item) => {
               const p = item;
               return (
-                <div key={item.id} className="bg-[#0a0a14]/60 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden group hover:border-white/20 transition-all">
+                <div key={item.id} className="bg-background backdrop-blur-xl border border-border rounded-3xl overflow-hidden group hover:border-border transition-all">
                   <div 
-                    className="relative aspect-square bg-white/5 cursor-pointer"
+                    className="relative aspect-square bg-black/[0.04] cursor-pointer"
                     onClick={() => {
                       setSelectedProductSlug(p.slug);
                       setIsModalOpen(true);
@@ -98,14 +98,14 @@ export default function WishlistPage() {
                     {p.primary_image ? (
                       <Image src={p.primary_image} alt={p.name} fill className="object-contain p-4 group-hover:scale-105 transition-transform" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-neutral-600">Sem Imagem</div>
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">Sem Imagem</div>
                     )}
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         removeFromWishlist(p.id);
                       }}
-                      className="absolute top-4 right-4 p-2 bg-black/50 backdrop-blur-md rounded-full text-neutral-400 hover:text-rose-500 transition-colors z-10"
+                      className="absolute top-4 right-4 p-2 bg-black/5 backdrop-blur-md rounded-full text-muted-foreground hover:text-rose-500 transition-colors z-10"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -118,8 +118,8 @@ export default function WishlistPage() {
                     }}
                   >
                     <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">{p.category_name}</p>
-                    <h3 className="font-bold text-lg text-white mb-2 line-clamp-1">{p.name}</h3>
-                    <p className="text-xl font-display font-black text-white mb-4">
+                    <h3 className="font-bold text-lg text-foreground mb-2 line-clamp-1">{p.name}</h3>
+                    <p className="text-xl font-display font-black text-foreground mb-4">
                       R$ {Number(p.base_price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </p>
                     <button 
@@ -127,7 +127,7 @@ export default function WishlistPage() {
                         e.stopPropagation();
                         handleAddToCart(p);
                       }}
-                      className="w-full py-3 bg-white/5 hover:bg-primary hover:text-white text-neutral-300 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-black/[0.04] hover:bg-primary hover:text-foreground text-muted-foreground rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
                     >
                       <ShoppingCart className="w-4 h-4" /> Mover para Carrinho
                     </button>
