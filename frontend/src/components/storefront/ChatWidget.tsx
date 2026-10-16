@@ -79,7 +79,7 @@ export function ChatWidget() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[70] flex flex-col overflow-hidden bg-atelie-cream font-atelie shadow-2xl ring-1 ring-black/10 sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[560px] sm:w-[380px] sm:rounded-3xl"
+            className="fixed inset-0 z-[70] flex flex-col overflow-hidden bg-atelie-cream font-atelie shadow-2xl ring-1 ring-black/10 sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[min(560px,calc(100dvh-7rem))] sm:w-[380px] sm:rounded-3xl"
           >
             <header className="flex items-center gap-3 border-b border-black/10 px-4 py-3">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-atelie-clay font-serif text-white">E</span>

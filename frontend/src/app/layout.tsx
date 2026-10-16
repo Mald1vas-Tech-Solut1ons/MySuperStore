@@ -31,10 +31,10 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "MySuperStore — O Centro da Gravidade Comercial",
-    template: "%s | MySuperStore",
+    default: "Ateliê Eli Trassi Macramê — bolsas feitas à mão",
+    template: "%s | Ateliê Eli Trassi",
   },
-  description: "Explore um universo multi-vendedor com split financeiro automatizado e uma experiência de compra que transcende qualquer expectativa terrestre.",
+  description: "Bolsas e peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.",
   manifest: "/manifest.json",
   // Ícones — o apple-touch-icon é obrigatório para o iOS instalar o PWA na tela de início.
   icons: {
@@ -48,26 +48,26 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MySuperStore",
+    title: "Ateliê Eli Trassi",
   },
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "MySuperStore",
+    siteName: "Ateliê Eli Trassi Macramê",
     images: [
       {
-        url: "/logo.png",
-        width: 1200,
-        height: 630,
-        alt: "MySuperStore Logo",
+        url: "/brand/atelie/caracol-praia.webp",
+        width: 1024,
+        height: 1536,
+        alt: "Bolsa Caracol em macramê do Ateliê Eli Trassi",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MySuperStore — O Centro da Gravidade Comercial",
-    description: "Explore um universo multi-vendedor.",
-    images: ["/logo.png"],
+    title: "Ateliê Eli Trassi Macramê",
+    description: "Bolsas e peças em macramê feitas à mão em Guarulhos-SP.",
+    images: ["/brand/atelie/caracol-praia.webp"],
   },
 };
 
