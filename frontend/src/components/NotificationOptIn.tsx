@@ -55,14 +55,14 @@ export function NotificationOptIn() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-24 z-50 mx-auto max-w-md rounded-2xl border border-primary/25 bg-[#0A0A15]/95 p-4 shadow-2xl backdrop-blur md:bottom-6">
+    <div className="fixed inset-x-3 bottom-24 z-50 mx-auto max-w-md rounded-2xl border border-primary/25 bg-background p-4 shadow-2xl backdrop-blur md:bottom-6">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
           <Bell className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-bold text-white">Ative as notificações</p>
-          <p className="mt-0.5 text-xs text-neutral-400">
+          <p className="text-sm font-bold text-foreground">Ative as notificações</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Receba avisos de pedidos, vendas e entregas em tempo real, como um app nativo.
           </p>
           <div className="mt-3 flex gap-2">
@@ -75,7 +75,7 @@ export function NotificationOptIn() {
             </button>
             <button
               onClick={handleDismiss}
-              className="rounded-full px-4 py-1.5 text-xs font-bold text-neutral-400 hover:text-white"
+              className="rounded-full px-4 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
             >
               Agora não
             </button>
@@ -84,7 +84,7 @@ export function NotificationOptIn() {
         <button
           onClick={handleDismiss}
           aria-label="Fechar"
-          className="text-neutral-500 hover:text-white"
+          className="text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>

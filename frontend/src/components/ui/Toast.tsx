@@ -63,7 +63,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="pointer-events-auto w-full flex items-center justify-between gap-3 p-4 rounded-2xl border border-white/[0.08] bg-[#0c0c1e]/85 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+              className="pointer-events-auto w-full flex items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-background backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
             >
               <div className="flex items-center gap-3">
                 <div className="shrink-0">{getIcon(t.type)}</div>
@@ -73,7 +73,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </div>
               <button
                 onClick={() => removeToast(t.id)}
-                className="shrink-0 text-white/40 hover:text-white/80 p-1 rounded-lg hover:bg-white/5 transition-all"
+                className="shrink-0 text-white/40 hover:text-foreground/80 p-1 rounded-lg hover:bg-black/[0.04] transition-all"
               >
                 <X className="w-4 h-4" />
               </button>

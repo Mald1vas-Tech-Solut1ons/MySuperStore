@@ -309,13 +309,13 @@ export default function AccountDashboardPage() {
               <span className="text-3xl font-display font-bold text-primary">{initials || <User className="h-10 w-10" />}</span>
             )}
             {uploadingAvatar && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                <Loader2 className="w-8 h-8 animate-spin text-white" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/5">
+                <Loader2 className="w-8 h-8 animate-spin text-foreground" />
               </div>
             )}
           </div>
-          <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Camera className="w-6 h-6 md:w-8 md:h-8 text-white" />
+          <div className="absolute inset-0 bg-black/5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Camera className="w-6 h-6 md:w-8 md:h-8 text-foreground" />
           </div>
           <input type="file" ref={fileRef} className="hidden" accept="image/*" onChange={onPickAvatar} disabled={uploadingAvatar} />
         </div>
@@ -462,7 +462,7 @@ export default function AccountDashboardPage() {
                   <button
                     type="submit"
                     disabled={savingSurvey}
-                    className="px-8 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-purple-600/20"
+                    className="px-8 py-3 rounded-xl bg-purple-600 text-foreground font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-purple-600/20"
                   >
                     {savingSurvey ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                     Salvar Preferências
@@ -555,7 +555,7 @@ export default function AccountDashboardPage() {
                     <p className="text-muted-foreground text-sm">Gerencie suas formas de pagamento de forma segura.</p>
                   </div>
                   <button
-                    className="px-5 py-2.5 rounded-xl bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-xl bg-blue-500/10 text-blue-500 font-bold hover:bg-blue-500 hover:text-foreground transition-all flex items-center gap-2"
                     onClick={() => toast("Adicionar cartão em breve!", "info")}
                   >
                     <Plus className="w-5 h-5" /> Adicionar Cartão
@@ -571,7 +571,7 @@ export default function AccountDashboardPage() {
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-8">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-8 object-contain" />
-                        <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider backdrop-blur-md">Principal</span>
+                        <span className="bg-black/[0.04] text-foreground text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider backdrop-blur-md">Principal</span>
                       </div>
                       <div className="space-y-1 mb-4">
                         <p className="font-mono text-lg tracking-widest text-white/90">**** **** **** 4821</p>
@@ -587,8 +587,8 @@ export default function AccountDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-20 backdrop-blur-sm">
-                      <button className="p-3 bg-white/20 rounded-full hover:bg-white/40 transition-colors text-white" title="Editar">
+                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 z-20 backdrop-blur-sm">
+                      <button className="p-3 bg-black/[0.04] rounded-full hover:bg-black/[0.04] transition-colors text-foreground" title="Editar">
                         <Edit2 className="w-5 h-5" />
                       </button>
                       <button className="p-3 bg-red-500/80 rounded-full hover:bg-red-500 transition-colors text-white" title="Remover">
@@ -661,7 +661,7 @@ export default function AccountDashboardPage() {
 
       {/* ── Modal de Endereço ── */}
       {addrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/5 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -742,7 +742,7 @@ export default function AccountDashboardPage() {
 
       {/* ── Modal de Exclusão ── */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/5 backdrop-blur-sm">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-background max-w-sm rounded-3xl p-6 shadow-2xl text-center border border-border">
             <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="h-6 w-6" />

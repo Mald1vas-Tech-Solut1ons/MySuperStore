@@ -123,7 +123,7 @@ export default function WishlistPage() {
                     <button 
                       onClick={(e) => { e.stopPropagation(); removeFromWishlist(product.id); }}
                       disabled={actionLoadingId === product.id}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-red-500 transition-colors disabled:opacity-50"
+                      className="absolute top-2 right-2 p-2 rounded-full bg-black/5 backdrop-blur-md text-white hover:bg-red-500 transition-colors disabled:opacity-50"
                       title="Remover dos favoritos"
                     >
                       <Trash2 className="h-4 w-4" />

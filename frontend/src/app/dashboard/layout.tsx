@@ -40,9 +40,9 @@ export default function DashboardLayout({
       <Header />
 
       {/* ── Mobile: tab bar no topo, logo abaixo do header ── */}
-      <div className="md:hidden sticky top-16 z-40 bg-[#050510]/95 backdrop-blur-xl border-b border-white/[0.06]">
+      <div className="md:hidden sticky top-16 z-40 bg-background backdrop-blur-xl border-b border-border">
         {/* User identity strip */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04]">
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary border border-primary/30 shrink-0">
             {initials || <User className="h-4 w-4" />}
           </div>

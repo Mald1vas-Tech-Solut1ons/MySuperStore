@@ -168,7 +168,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/5 backdrop-blur-sm"
         />
 
         {/* Modal Container */}
@@ -222,7 +222,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                   )}
                   {!isZooming && (
                     <div className="absolute bottom-3 left-0 right-0 hidden md:flex justify-center opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <span className="bg-black/80 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-md">
+                      <span className="bg-black/5 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-md">
                         <Info className="h-3.5 w-3.5" /> Passe o mouse para dar zoom
                       </span>
                     </div>
@@ -257,11 +257,14 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                       <span className="text-xs font-bold uppercase tracking-wider text-primary">
                         {product.category}
                       </span>
-                      <div className="flex items-center gap-1 text-amber-500 bg-amber-500/10 px-2 py-1 rounded-md">
-                        <Star className="h-3.5 w-3.5 fill-current" />
-                        <span className="text-sm font-bold">{product.avg_rating ? Number(product.avg_rating).toFixed(1) : "5.0"}</span>
-                        <span className="text-xs text-muted-foreground ml-1">({product.review_count || 0})</span>
-                      </div>
+                      {/* Nota só com avaliações reais (antes mostrava "5.0" com zero avaliações). */}
+                      {product.review_count > 0 && product.avg_rating ? (
+                        <div className="flex items-center gap-1 text-amber-600 bg-amber-500/10 px-2 py-1 rounded-md">
+                          <Star className="h-3.5 w-3.5 fill-current" />
+                          <span className="text-sm font-bold">{Number(product.avg_rating).toFixed(1)}</span>
+                          <span className="text-xs text-muted-foreground ml-1">({product.review_count})</span>
+                        </div>
+                      ) : null}
                     </div>
                     
                     <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground leading-tight pr-10">
@@ -352,35 +355,18 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
 
                   {/* Price */}
                   <div className="py-4 border-y border-border/40 space-y-3">
-                    {product.is_flash_sale ? (
+                    {product.promotional_price && Number(product.promotional_price) < Number(product.base_price) ? (
                       <div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold bg-yellow-500 text-black px-2.5 py-1 rounded-md flex items-center gap-1">
-                            <Zap className="w-3.5 h-3.5 fill-current" /> {product.discount_percentage}% OFF
-                          </span>
-                          <span className="text-sm text-muted-foreground line-through">
-                            De: R$ {Number(product.base_price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="text-sm text-yellow-500 font-bold mt-1">
-                          Oferta Relâmpago
-                        </div>
-                        <div className="text-4xl font-display font-black text-yellow-500 mt-0.5">
+                        <span className="text-sm text-muted-foreground line-through">
+                          De R$ {Number(product.base_price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </span>
+                        <div className="font-serif text-4xl text-foreground">
                           R$ {Number(selectedVariant?.effective_price || product.promotional_price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        {product.time_remaining_seconds > 0 && (
-                          <div className="mt-3">
-                            <CountdownTimer 
-                              initialSeconds={product.time_remaining_seconds} 
-                              className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-4 py-2.5 rounded-xl w-fit" 
-                            />
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <div>
-                        <span className="text-sm text-muted-foreground">Preço total</span>
-                        <div className="text-3xl font-display font-black text-foreground">
+                        <div className="font-serif text-4xl text-foreground">
                           R$ {Number(selectedVariant?.effective_price || product.base_price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -420,29 +406,17 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                       </div>
                       {selectedVariant && (
                         <div className="flex flex-col gap-2 mt-2">
-                          {/* Social Proof Trigger */}
-                          {product.carts_count > 0 && (
-                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 w-fit">
-                              <span className="relative flex h-2 w-2 mr-1">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                              </span>
-                              {product.carts_count} {product.carts_count === 1 ? "pessoa está" : "pessoas estão"} com este item no carrinho
-                            </div>
-                          )}
-
-                          {/* Scarcity Trigger */}
-                          {selectedVariant.stock > 0 && selectedVariant.stock <= 5 ? (
-                            <p className="text-xs font-extrabold text-red-500 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg w-fit flex items-center gap-1.5 animate-pulse">
-                              <Flame className="h-3.5 w-3.5" />
-                              ESTOQUE CRÍTICO: APENAS {selectedVariant.stock} UNIDADES RESTANTES!
-                            </p>
-                          ) : (
+                          {selectedVariant.stock === 1 ? (
                             <p className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1">
                               <Info className="h-3.5 w-3.5" />
-                              Estoque disponível: <strong className="text-foreground">{selectedVariant.stock} unidades</strong>
+                              Peça única: feita à mão, esta é a única disponível.
                             </p>
-                          )}
+                          ) : selectedVariant.stock > 1 ? (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1">
+                              <Info className="h-3.5 w-3.5" />
+                              {selectedVariant.stock} disponíveis
+                            </p>
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -466,7 +440,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
                           {product.is_free_shipping ? (
                             <div className="flex items-center gap-2 text-emerald-500 font-semibold">
-                              <Zap className="w-4 h-4" /> Frete Grátis disponível para o seu CEP
+                              <Truck className="w-4 h-4" /> Frete grátis
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -474,7 +448,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                             </div>
                           )}
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" /> Estimativa de entrega: {product.estimated_delivery_days || 5} dias úteis
+                            <Clock className="w-4 h-4" /> Prazo de entrega calculado pelo CEP no checkout
                           </div>
                           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/40">
                             <Info className="w-4 h-4" /> Política de Devolução: Você tem até 7 dias após o recebimento para devolver gratuitamente.
@@ -521,61 +495,6 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                     </div>
                   )}
 
-                  {/* Perguntas e Respostas Section */}
-                  <div className="pt-6 border-t border-border/40 space-y-4">
-                    <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                      <MessageSquare className="h-5 w-5 text-blue-500" /> Perguntas e Respostas
-                    </h3>
-                    
-                    <form 
-                      className="relative mb-4"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (questionInput.trim()) {
-                          setQuestions([{
-                            id: Date.now(),
-                            user: "Você",
-                            text: questionInput,
-                            reply: null,
-                            replyBy: null,
-                            date: "Agora mesmo"
-                          }, ...questions]);
-                          setQuestionInput('');
-                        }
-                      }}
-                    >
-                      <input type="text" value={questionInput} onChange={e => setQuestionInput(e.target.value)} placeholder="Tem alguma dúvida sobre este produto?" className="w-full bg-background border border-border/50 rounded-xl pl-4 pr-[100px] py-3 text-sm focus:border-blue-500 outline-none" />
-                      <button type="submit" disabled={!questionInput.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 font-bold text-sm bg-blue-500/10 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 disabled:opacity-50">Perguntar</button>
-                    </form>
-
-                    <div className="space-y-4">
-                      {questions.map((q) => (
-                        <div key={q.id} className="bg-card/30 p-4 rounded-xl border border-border/30">
-                          <div className="flex gap-2">
-                            <span className="font-bold text-blue-500">P:</span>
-                            <div>
-                              <p className="text-sm text-foreground font-medium">{q.text}</p>
-                              <span className="text-[10px] text-muted-foreground">{q.user} • {q.date}</span>
-                            </div>
-                          </div>
-                          {q.reply ? (
-                            <div className="flex gap-2 pl-6 mt-3 border-t border-border/10 pt-3">
-                              <span className="font-bold text-neutral-500">R:</span>
-                              <div>
-                                <p className="text-sm text-muted-foreground">{q.reply}</p>
-                                <span className="text-[10px] text-muted-foreground font-semibold mt-1 inline-block">— {product?.seller_name || q.replyBy}</span>
-                              </div>
-                            </div>
-                          ) : (
-                             <div className="pl-6 mt-2 text-xs text-amber-500/80 italic flex items-center gap-1.5 font-medium">
-                               <Clock className="w-3.5 h-3.5" /> Aguardando resposta do vendedor...
-                             </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Reviews Section */}
                   <div className="pt-6 border-t border-border/40 space-y-4">
                     <h3 className="font-display font-bold text-lg flex items-center gap-2">
@@ -610,16 +529,16 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                   </div>
                 </div>
 
-                {/* Produtos Relacionados (AOV Engine UI Mock) */}
+                {/* Peças relacionadas (dados reais da API) */}
                 <div className="p-6 md:p-8 border-t border-border/40 bg-secondary/5">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                      <Star className="w-5 h-5 text-primary" /> Produtos Similares
+                      Você também pode gostar
                     </h3>
                   </div>
                   <div className="flex gap-4 overflow-x-auto pb-4 snap-x">
                     {similarProducts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic p-4 bg-white/[0.01] rounded-xl border border-white/[0.04] w-full text-center">Nenhum produto similar encontrado.</p>
+                      <p className="text-xs text-muted-foreground italic p-4 bg-black/[0.04] rounded-xl border border-border w-full text-center">Nenhum produto similar encontrado.</p>
                     ) : similarProducts.map((item) => (
                       <div 
                         key={item.id} 
@@ -695,19 +614,19 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
             initial={{ opacity: 0, x: 100, y: 50 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, x: 100, y: 50 }}
-            className="fixed bottom-20 right-3 sm:right-6 z-[200] w-[calc(100vw-24px)] sm:w-96 max-w-[384px] h-[420px] sm:h-[480px] bg-[#0c0c1e] border border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
+            className="fixed bottom-20 right-3 sm:right-6 z-[200] w-[calc(100vw-24px)] sm:w-96 max-w-[384px] h-[420px] sm:h-[480px] bg-background border border-border rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden text-foreground"
           >
             {/* Header */}
-            <div className="p-4 border-b border-white/[0.08] bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between">
+            <div className="p-4 border-b border-border bg-gradient-to-r from-primary/10 to-transparent flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-sm">Falar com o Vendedor</h4>
-                <p className="text-xs text-neutral-400 truncate max-w-[200px]">
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                   Loja: {product?.seller_name}
                 </p>
               </div>
               <button
                 onClick={() => setIsChatOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-all"
+                className="p-1.5 rounded-lg hover:bg-black/[0.04] text-muted-foreground hover:text-foreground transition-all"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -718,11 +637,11 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
               {chatLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <span className="text-xs text-neutral-400">Iniciando conversa...</span>
+                  <span className="text-xs text-muted-foreground">Iniciando conversa...</span>
                 </div>
               ) : chatMessages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-center p-4">
-                  <p className="text-xs text-neutral-500 italic">Nenhuma mensagem ainda. Envie uma mensagem para iniciar!</p>
+                  <p className="text-xs text-muted-foreground italic">Nenhuma mensagem ainda. Envie uma mensagem para iniciar!</p>
                 </div>
               ) : (
                 chatMessages.map((msg: any) => {
@@ -741,7 +660,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                       >
                         {msg.message}
                       </div>
-                      <span className="text-[9px] text-neutral-500 mt-1">
+                      <span className="text-[9px] text-muted-foreground mt-1">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
@@ -764,7 +683,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                   toast("Erro ao enviar mensagem.", "error");
                 }
               }}
-              className="p-3 border-t border-white/[0.08] bg-[#070714] flex gap-2"
+              className="p-3 border-t border-border bg-background flex gap-2"
             >
               <input
                 type="text"
@@ -772,7 +691,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                 value={chatMessageInput}
                 onChange={(e) => setChatMessageInput(e.target.value)}
                 disabled={chatLoading}
-                className="flex-grow bg-white/[0.03] border border-white/[0.08] focus:border-primary/50 text-white rounded-xl px-3 py-2 text-xs outline-none"
+                className="flex-grow bg-black/[0.04] border border-border focus:border-primary/50 text-foreground rounded-xl px-3 py-2 text-xs outline-none"
               />
               <button
                 type="submit"

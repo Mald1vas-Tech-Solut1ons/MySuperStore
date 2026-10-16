@@ -37,8 +37,9 @@ function Storefront() {
   const params = useSearchParams();
   const category = params.get("category");
   const search = params.get("search");
+  const loja = params.get("loja");
   const productSlug = params.get("product");
-  const browsing = Boolean(category || search);
+  const browsing = Boolean(category || search || loja);
 
   const [stores, setStores] = useState<PublicStore[]>([]);
   const [categories, setCategories] = useState<StoreCategory[]>([]);
@@ -60,7 +61,7 @@ function Storefront() {
     let alive = true;
     setLoading(true);
     setFailed(false);
-    fetchProducts({ ...(category ? { category } : {}), ...(search ? { search } : {}) })
+    fetchProducts({ ...(category ? { category } : {}), ...(search ? { search } : {}), ...(loja ? { seller: loja } : {}) })
       .then((rows) => alive && setProducts(rows))
       .catch(() => {
         if (!alive) return;
@@ -72,7 +73,7 @@ function Storefront() {
     return () => {
       alive = false;
     };
-  }, [category, search, retry]);
+  }, [category, search, loja, retry]);
 
   const featured = stores[0] ?? null;
 
@@ -96,7 +97,8 @@ function Storefront() {
     [params, pathname, router],
   );
 
-  const gridTitle = search ? `Resultados para “${search}”` : category ? usedCategories.find((c) => c.slug === category)?.name ?? "A coleção" : "A coleção";
+  const lojaName = loja ? stores.find((s) => s.slug === loja)?.store_name ?? allProducts.find((p) => p.seller_slug === loja)?.seller_name : null;
+  const gridTitle = lojaName ? `Peças de ${lojaName}` : search ? `Resultados para “${search}”` : category ? usedCategories.find((c) => c.slug === category)?.name ?? "A coleção" : "A coleção";
 
   return (
     <WallBackdrop className="min-h-screen font-atelie text-atelie-ink">

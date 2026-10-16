@@ -78,7 +78,7 @@ export function NotificationDropdown() {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-full hover:bg-white/10 text-neutral-300 hover:text-white transition-colors relative group"
+        className="p-2 rounded-full hover:bg-black/[0.04] text-muted-foreground hover:text-foreground transition-colors relative group"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -86,7 +86,7 @@ export function NotificationDropdown() {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-        <span className="absolute top-14 right-0 scale-0 group-hover:scale-100 transition-all bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap z-50">
+        <span className="absolute top-14 right-0 scale-0 group-hover:scale-100 transition-all bg-black/5 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap z-50">
           Notificações
         </span>
       </button>
@@ -98,10 +98,10 @@ export function NotificationDropdown() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 top-12 w-80 sm:w-96 bg-[#0F0F1A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl"
+            className="absolute right-0 top-12 w-80 sm:w-96 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl"
           >
-            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-              <h3 className="font-bold text-white flex items-center gap-2">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-black/[0.04]">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
                 <Bell className="w-4 h-4 text-primary" /> Notificações
               </h3>
               {unreadCount > 0 && (
@@ -117,7 +117,7 @@ export function NotificationDropdown() {
             
             <div className="max-h-[400px] overflow-y-auto overflow-x-hidden p-2 custom-scrollbar">
               {notifications.length === 0 ? (
-                <div className="p-8 text-center text-neutral-400 flex flex-col items-center justify-center">
+                <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center">
                   <Bell className="w-8 h-8 mb-3 opacity-20" />
                   <p className="text-sm">Você não tem novas notificações.</p>
                 </div>
@@ -146,10 +146,10 @@ export function NotificationDropdown() {
                         <p className={`text-sm font-semibold truncate ${notif.is_read ? "text-neutral-300" : "text-white"}`}>
                           {notif.title}
                         </p>
-                        <p className="text-xs text-neutral-400 line-clamp-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                           {notif.message}
                         </p>
-                        <span className="text-[10px] text-neutral-500 mt-1 block">
+                        <span className="text-[10px] text-muted-foreground mt-1 block">
                           {new Date(notif.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -162,8 +162,8 @@ export function NotificationDropdown() {
               )}
             </div>
             {notifications.length > 10 && (
-              <div className="p-3 border-t border-white/10 text-center bg-white/[0.02]">
-                <span className="text-xs text-neutral-400">Mostrando as 10 mais recentes.</span>
+              <div className="p-3 border-t border-border text-center bg-black/[0.04]">
+                <span className="text-xs text-muted-foreground">Mostrando as 10 mais recentes.</span>
               </div>
             )}
           </motion.div>

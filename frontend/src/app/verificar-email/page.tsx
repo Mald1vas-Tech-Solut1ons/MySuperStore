@@ -52,17 +52,17 @@ function VerifyEmailInner() {
   }, [token, isAuthenticated, updateUser]);
 
   return (
-    <div className="min-h-screen bg-[#050510] text-neutral-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-background text-neutral-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#E6B53C]/10 blur-[150px] pointer-events-none" />
 
       <OfficialLogo className="w-[200px] h-auto mb-10 drop-shadow-[0_0_20px_rgba(212,175,55,0.3)]" />
 
-      <div className="relative z-10 w-full max-w-md bg-[#0A0A15] border border-white/10 rounded-3xl p-8 md:p-10 text-center shadow-2xl">
+      <div className="relative z-10 w-full max-w-md bg-background border border-border rounded-3xl p-8 md:p-10 text-center shadow-2xl">
         {status === "loading" && (
           <>
             <Loader2 className="w-14 h-14 text-[#E6B53C] mx-auto mb-5 animate-spin" />
-            <h1 className="text-2xl font-black text-white mb-2">Confirmando...</h1>
-            <p className="text-neutral-400">{message}</p>
+            <h1 className="text-2xl font-black text-foreground mb-2">Confirmando...</h1>
+            <p className="text-muted-foreground">{message}</p>
           </>
         )}
 
@@ -71,8 +71,8 @@ function VerifyEmailInner() {
             <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 className="w-9 h-9 text-emerald-400" />
             </div>
-            <h1 className="text-2xl font-black text-white mb-2">E-mail confirmado!</h1>
-            <p className="text-neutral-400 mb-8">{message}</p>
+            <h1 className="text-2xl font-black text-foreground mb-2">E-mail confirmado!</h1>
+            <p className="text-muted-foreground mb-8">{message}</p>
             <div className="flex flex-col gap-3">
               <Link
                 href="/seller/onboarding"
@@ -80,7 +80,7 @@ function VerifyEmailInner() {
               >
                 <Store className="w-5 h-5" /> Abrir minha loja
               </Link>
-              <Link href="/" className="text-sm text-neutral-400 hover:text-white transition-colors py-2">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
                 Voltar para a loja
               </Link>
             </div>
@@ -92,16 +92,16 @@ function VerifyEmailInner() {
             <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-5">
               <XCircle className="w-9 h-9 text-red-400" />
             </div>
-            <h1 className="text-2xl font-black text-white mb-2">Não rolou</h1>
-            <p className="text-neutral-400 mb-8">{message}</p>
+            <h1 className="text-2xl font-black text-foreground mb-2">Não rolou</h1>
+            <p className="text-muted-foreground mb-8">{message}</p>
             <div className="flex flex-col gap-3">
               <Link
                 href="/seller/onboarding"
-                className="w-full py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-xl bg-black/[0.04] border border-border text-foreground font-bold hover:bg-black/[0.04] transition-colors flex items-center justify-center gap-2"
               >
                 <MailCheck className="w-5 h-5" /> Reenviar confirmação
               </Link>
-              <Link href="/" className="text-sm text-neutral-400 hover:text-white transition-colors py-2">
+              <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
                 Voltar para a loja
               </Link>
             </div>
@@ -114,7 +114,7 @@ function VerifyEmailInner() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#050510]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <VerifyEmailInner />
     </Suspense>
   );

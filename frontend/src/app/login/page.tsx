@@ -6,16 +6,17 @@ export const dynamic = "force-dynamic";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { SaturnMark } from "@/components/Brand";
 import { useAuthStore } from "@/store/authStore";
 import { authApi } from "@/lib/api";
 import { motion } from "framer-motion";
-import { LogIn, Mail, Lock, Loader2, AlertCircle } from "lucide-react";
+import { LogIn, Lock, Loader2, AlertCircle } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
+import { WallBackdrop } from "@/components/storefront/WallBackdrop";
+import { SiteHeader } from "@/components/storefront/SiteHeader";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-atelie-clay" /></div>}>
       <LoginContent />
     </Suspense>
   );
@@ -38,7 +39,7 @@ function LoginContent() {
 
     try {
       const { data } = await authApi.login(email, password);
-      
+
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
 
@@ -72,120 +73,93 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden px-4">
-      {/* Background gradients */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+    <WallBackdrop className="min-h-screen font-atelie text-atelie-ink">
+      <SiteHeader />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md space-y-8 p-8 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md shadow-2xl relative z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25 }}
+        className="mx-4 mt-12 rounded-3xl bg-white/80 p-8 shadow-xl ring-1 ring-black/5 sm:mx-auto sm:max-w-md sm:p-10"
       >
-        <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2.5 group mb-4">
-            <SaturnMark className="h-12 w-auto drop-shadow-[0_2px_12px_rgba(230,181,60,0.3)] group-hover:scale-105 transition-transform duration-300" />
-            <span className="font-display text-xl font-extrabold tracking-[-0.02em] text-foreground">
-              MySuperStore
-            </span>
-          </Link>
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-foreground">
-            Bem-vindo de volta
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Entre na sua conta para gerenciar compras e vendas
-          </p>
+        <div className="mb-8 text-center">
+          <h1 className="font-serif text-4xl">Entrar</h1>
+          <p className="mt-2 text-sm text-atelie-ink/60">Acesse sua conta para acompanhar pedidos e favoritos.</p>
         </div>
 
         {error && (
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-destructive text-sm"
-          >
+          <div role="alert" className="mb-6 flex items-center gap-2 rounded-2xl border border-atelie-clay/30 bg-atelie-clay/10 p-3 text-sm text-atelie-clay">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
-          </motion.div>
+          </div>
         )}
 
-        <div className="flex justify-center mb-6">
+        <div className="mb-6 flex justify-center">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={() => setError("O login com Google falhou.")}
-            theme="filled_black"
+            theme="outline"
             text="signin_with"
-            shape="rectangular"
+            shape="pill"
           />
         </div>
 
-        <div className="relative flex items-center py-2 mb-4">
-          <div className="flex-grow border-t border-border/60"></div>
-          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs uppercase tracking-widest font-semibold">Ou continue com email</span>
-          <div className="flex-grow border-t border-border/60"></div>
+        <div className="relative mb-6 flex items-center">
+          <div className="flex-grow border-t border-black/10"></div>
+          <span className="mx-4 flex-shrink-0 text-xs text-atelie-ink/50">ou continue com e-mail</span>
+          <div className="flex-grow border-t border-black/10"></div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              E-mail
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu-email@exemplo.com"
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-border/60 bg-background/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm"
-              />
-            </div>
+            <label htmlFor="login-email" className="text-sm text-atelie-ink/80">E-mail</label>
+            <input
+              id="login-email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu-email@exemplo.com"
+              className="h-12 w-full rounded-2xl bg-white px-4 outline-none ring-1 ring-black/10 placeholder:text-atelie-ink/40 focus:ring-2 focus:ring-atelie-clay"
+            />
           </div>
 
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Senha
-              </label>
-              <Link href="/forgot-password" className="text-xs text-primary hover:underline font-medium">
-                Esqueceu a senha?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-border/60 bg-background/50 text-foreground placeholder-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none text-sm"
-              />
-            </div>
+          <div className="space-y-2">
+            {/* Recuperação de senha ainda não existe (rota /forgot-password dava 404): link volta quando a feature for criada. */}
+            <label htmlFor="login-password" className="text-sm text-atelie-ink/80">Senha</label>
+            <input
+              id="login-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="h-12 w-full rounded-2xl bg-white px-4 outline-none ring-1 ring-black/10 placeholder:text-atelie-ink/40 focus:ring-2 focus:ring-atelie-clay"
+            />
           </div>
-
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/95 font-semibold text-sm transition-all shadow-md disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-atelie-ink font-medium text-atelie-cream transition-colors hover:bg-atelie-clay disabled:opacity-60"
           >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <LogIn className="h-4 w-4" />
-            )}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Não tem uma conta?{" "}
-          <Link href="/register" className="text-primary hover:underline font-semibold">
-            Cadastre-se
-          </Link>
+        <p className="mt-6 text-center text-sm text-atelie-ink/60">
+          Ainda não tem conta?{" "}
+          <Link href="/register" className="text-atelie-clay hover:underline">Criar conta</Link>
         </p>
       </motion.div>
-    </div>
+
+      <div className="mx-auto mt-4 flex max-w-md items-center justify-center gap-2 pb-16 text-xs text-atelie-ink/50">
+        <Lock className="h-3.5 w-3.5" />
+        <span>Seus dados são protegidos com criptografia.</span>
+      </div>
+    </WallBackdrop>
   );
 }
