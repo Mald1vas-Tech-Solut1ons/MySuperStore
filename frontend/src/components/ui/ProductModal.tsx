@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { X, Star, ShoppingCart, Loader2, Info, ArrowRight, Heart, MessageSquare, Share2, Clock, Zap, MessageCircle, Truck, Flame } from "lucide-react";
+import { X, Star, ShoppingCart, Loader2, Info, ArrowRight, Heart, MessageSquare, Share2, Clock, Zap, MessageCircle, Truck, Flame, Play } from "lucide-react";
 import { catalogApi, cartApi, wishlistApi, reviewApi, chatApi } from "@/lib/api";
 import { Product, ProductVariant } from "@/types";
 import { useAuthStore } from "@/store/authStore";
@@ -26,6 +26,8 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
   const { isAuthenticated, user } = useAuthStore();
   
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  // Vídeo da peça (máx. 1, enviado pelo painel da loja): aparece como miniatura ao lado das fotos.
+  const [showVideo, setShowVideo] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -89,6 +91,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
       .then((res) => {
         const prod = res.data;
         setProduct(prod);
+        setShowVideo(false);
         if (prod.images && prod.images.length > 0) {
           const primary = prod.images.find((img: any) => img.is_primary) || prod.images[0];
           setSelectedImage(primary.image);
@@ -202,6 +205,21 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                   Desktop: metade da largura, scroll próprio */}
               <div className="shrink-0 w-full h-[55vh] md:h-auto md:shrink md:flex-1 md:w-1/2 bg-black/5 flex flex-col p-3 md:p-6 gap-3 border-b md:border-b-0 md:border-r border-border/20 md:overflow-y-auto">
                 {/* Imagem principal — flex-1 preenche a altura disponível (retrato no mobile) */}
+                {showVideo && product.video_url ? (
+                  <div className="relative flex-1 min-h-0 rounded-xl overflow-hidden border border-border/30 bg-black">
+                    <video
+                      key={product.video_url}
+                      src={product.video_url}
+                      controls
+                      autoPlay
+                      muted
+                      playsInline
+                      preload="metadata"
+                      aria-label={`Vídeo da peça ${product.name}`}
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
                 <div
                   className="relative flex-1 min-h-0 rounded-xl overflow-hidden border border-border/30 bg-background/50 cursor-crosshair group"
                   onMouseEnter={() => setIsZooming(true)}
@@ -228,21 +246,41 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Thumbnails */}
-                {product.images && product.images.length > 1 && (
+                {/* Thumbnails (fotos + vídeo, se houver) */}
+                {((product.images?.length ?? 0) > 1 || product.video_url) && (
                   <div className="shrink-0 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                     {product.images.map((img: any) => (
                       <button
                         key={img.id}
-                        onClick={() => setSelectedImage(img.image)}
+                        onClick={() => { setSelectedImage(img.image); setShowVideo(false); }}
                         className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
-                          selectedImage === img.image ? "border-primary" : "border-transparent hover:border-primary/50"
+                          !showVideo && selectedImage === img.image ? "border-primary" : "border-transparent hover:border-primary/50"
                         }`}
                       >
                         <img src={img.image} alt="Thumbnail" className="w-full h-full object-cover" />
                       </button>
                     ))}
+                    {product.video_url && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowVideo(true); setIsZooming(false); setZoomStyle({}); }}
+                        aria-label="Ver vídeo da peça"
+                        aria-pressed={showVideo}
+                        className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all bg-black ${
+                          showVideo ? "border-primary" : "border-transparent hover:border-primary/50"
+                        }`}
+                      >
+                        {selectedImage && <img src={selectedImage} alt="" className="w-full h-full object-cover opacity-60" />}
+                        <span aria-hidden className="absolute inset-0 grid place-items-center">
+                          <span className="grid h-7 w-7 md:h-9 md:w-9 place-items-center rounded-full bg-white/90 shadow">
+                            <Play className="ml-0.5 h-3.5 w-3.5 md:h-4 md:w-4 text-black" fill="currentColor" />
+                          </span>
+                        </span>
+                        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-[9px] md:text-[10px] text-white text-center py-0.5">Vídeo</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
