@@ -206,6 +206,25 @@ class CartShippingQuoteView(BaseCartView, generics.GenericAPIView):
                 "insurance_value": float(item.variant.effective_price * item.quantity)
             })
 
+        # Frete fixo: uma opção por loja, com preço imposto pelo servidor (sem cotação externa).
+        from django.conf import settings as dj_settings
+        if dj_settings.SHIPPING_MODE == "flat":
+            price = str(dj_settings.FLAT_SHIPPING_PRICE)
+            quotes = {
+                str(seller.id): {
+                    "store_name": seller.store_name,
+                    "options": [{
+                        "id": "flat", "name": "Envio padrão — todo o Brasil", "price": price,
+                        "custom_price": price, "company": {"name": seller.store_name}, "delivery_time": None,
+                    }],
+                }
+                for seller in sellers_items
+            }
+            cart.destination_cep = dest_cep
+            cart.selected_shipping = {}
+            cart.save(update_fields=["destination_cep", "selected_shipping"])
+            return Response(quotes)
+
         me_service = MelhorEnvioService()
         quotes = {}
 

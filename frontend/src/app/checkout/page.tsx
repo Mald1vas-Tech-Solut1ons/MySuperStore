@@ -455,7 +455,7 @@ function CheckoutInner() {
                                 }`}>
                                 <div>
                                   <p className="font-semibold text-sm">{opt.name}</p>
-                                  <p className="text-xs text-muted-foreground">{opt.company?.name} · {opt.delivery_time} dia(s) útil(eis)</p>
+                                  <p className="text-xs text-muted-foreground">{opt.company?.name}{opt.delivery_time ? ` · ${opt.delivery_time} dia(s) útil(eis)` : ""}</p>
                                 </div>
                                 <span className="font-display font-bold text-primary whitespace-nowrap">
                                   R$ {Number(opt.price).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}

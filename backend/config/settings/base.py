@@ -244,6 +244,9 @@ PASSWORD_RESET_TIMEOUT = 60 * 60 * 2
 # Frete grátis (pago pela loja) quando os produtos, já com desconto, somam ao menos isto.
 from decimal import Decimal as _Decimal
 FREE_SHIPPING_MIN = _Decimal(env("FREE_SHIPPING_MIN", default="299.00"))
+# "melhor_envio" = cotação real; "flat" = preço fixo por loja (FLAT_SHIPPING_PRICE), decidido no servidor.
+SHIPPING_MODE = env("SHIPPING_MODE", default="melhor_envio")
+FLAT_SHIPPING_PRICE = _Decimal(env("FLAT_SHIPPING_PRICE", default="25.00"))
 MEILI_MASTER_KEY = env("MEILI_MASTER_KEY", default="devmasterkey")
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────

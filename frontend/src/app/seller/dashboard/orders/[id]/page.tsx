@@ -22,7 +22,7 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ id
   const [order, setOrder] = useState<SubOrder | null>(null);
   const [loading, setLoading] = useState(true);
   
-  const [carrier, setCarrier] = useState("");
+  const [carrier, setCarrier] = useState("Correios");
   const [trackingCode, setTrackingCode] = useState("");
   const [estimatedDate, setEstimatedDate] = useState("");
   const [invoiceLink, setInvoiceLink] = useState("");
@@ -51,8 +51,9 @@ export default function SellerOrderDetailPage({ params }: { params: Promise<{ id
 
   const handleUpdateStatus = async (newStatus: string) => {
     if (newStatus === "shipped") {
-      if (!carrier || !trackingCode || !estimatedDate) {
-        toast("Preencha transportadora, rastreio e previsão de entrega.", "error");
+      // Na postagem dos Correios a previsão nem sempre é conhecida: só transportadora e código são obrigatórios.
+      if (!carrier || !trackingCode) {
+        toast("Preencha a transportadora e o código de rastreio.", "error");
         return;
       }
     }

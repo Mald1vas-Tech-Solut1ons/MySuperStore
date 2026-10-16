@@ -76,11 +76,16 @@ class Cart(models.Model):
         """
         from decimal import Decimal
         sellers_in_cart = {str(s) for s in self.items.values_list("variant__product__seller_id", flat=True)}
-        total = Decimal("0.00")
-        for seller_id, seller_data in (self.selected_shipping or {}).items():
-            if seller_id in sellers_in_cart and "price" in seller_data:
-                total += Decimal(str(seller_data["price"]))
-        return total
+        return sum((self.seller_shipping_price(sid) for sid in sellers_in_cart), Decimal("0.00"))
+
+    def seller_shipping_price(self, seller_id):
+        """Frete de UMA loja. No modo fixo o servidor impõe o preço; senão vale a cotação escolhida."""
+        from decimal import Decimal
+        from django.conf import settings
+        if settings.SHIPPING_MODE == "flat":
+            return settings.FLAT_SHIPPING_PRICE
+        data = (self.selected_shipping or {}).get(str(seller_id)) or {}
+        return Decimal(str(data.get("price", 0) or 0))
 
     @property
     def shipping_total(self):

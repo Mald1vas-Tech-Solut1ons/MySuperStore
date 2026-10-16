@@ -687,3 +687,20 @@ class PhantomShippingTest(TestCase):
         cart.selected_shipping = {str(atelie.id): {"price": "20.00"}, str(antiga.id): {"price": "53.79"}}
         cart.save()
         self.assertEqual(cart.shipping_total, Decimal("20.00"))
+
+
+@override_settings(SHIPPING_MODE="flat", FLAT_SHIPPING_PRICE=Decimal("25.00"))
+class FlatShippingTest(FreeShippingTest):
+    """Frete fixo: servidor impõe R$ 25 por loja (ignora preço vindo do navegador); grátis acima do mínimo."""
+
+    def test_abaixo_do_minimo_cobra_frete(self):
+        order = self._order(self.barata)  # selected_shipping traz 25 do teste-base; trocamos por preço forjado
+        self.assertEqual(order.shipping, Decimal("25.00"))
+
+    def test_preco_forjado_no_navegador_e_ignorado(self):
+        cart, _ = Cart.objects.get_or_create(user=self.buyer)
+        cart.items.all().delete()
+        CartItem.objects.create(cart=cart, variant=self.barata, quantity=1)
+        cart.selected_shipping = {str(self.seller.id): {"price": "0.01"}}
+        cart.save()
+        self.assertEqual(cart.shipping_total, Decimal("25.00"))
