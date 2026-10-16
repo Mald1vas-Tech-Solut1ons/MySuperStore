@@ -17,6 +17,8 @@ class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     shipping_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    free_shipping = serializers.BooleanField(read_only=True)
+    free_shipping_min = serializers.SerializerMethodField()
     total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     item_count = serializers.IntegerField(read_only=True)
     coupon_code = serializers.CharField(source="coupon.code", read_only=True, default=None)
@@ -30,7 +32,7 @@ class CartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = [
-            "id", "items", "subtotal", "shipping_total", "total", "item_count", 
+            "id", "items", "subtotal", "shipping_total", "free_shipping", "free_shipping_min", "total", "item_count", 
             "coupon_code", "coupon_discount_percentage", "coupon_discount_amount",
             "destination_cep", "selected_shipping"
         ]
@@ -65,3 +67,10 @@ class ShippingQuoteSerializer(serializers.Serializer):
 class ShippingSelectSerializer(serializers.Serializer):
     # Formato esperado: {"seller_id": {"id": 1, "company": "Correios", "name": "PAC", "price": "18.50", "delivery_time": 5}}
     selected_shipping = serializers.JSONField()
+
+def _free_shipping_min(_obj):
+    from django.conf import settings
+    return str(settings.FREE_SHIPPING_MIN)
+
+
+CartSerializer.get_free_shipping_min = staticmethod(_free_shipping_min)

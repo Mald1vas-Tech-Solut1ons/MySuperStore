@@ -34,6 +34,11 @@ class Cart(models.Model):
 
     @property
     def total(self):
+        return self.products_total + self.shipping_total
+
+    @property
+    def products_total(self):
+        """Produtos já com o desconto do cupom (sem frete)."""
         base_total = self.subtotal
         if not self.coupon or not self.coupon.active:
             return base_total
@@ -53,17 +58,30 @@ class Cart(models.Model):
             elif self.coupon.discount_amount:
                 discount = min(self.coupon.discount_amount, base_total)
                 
-        total_after_discount = max(base_total - discount, 0)
-        return total_after_discount + self.shipping_total
+        return max(base_total - discount, 0)
 
     @property
-    def shipping_total(self):
+    def free_shipping(self):
+        """Frete grátis quando os produtos com desconto atingem settings.FREE_SHIPPING_MIN."""
+        from decimal import Decimal
+        from django.conf import settings
+        return Decimal(str(self.products_total)) >= settings.FREE_SHIPPING_MIN
+
+    @property
+    def quoted_shipping_total(self):
+        """Frete cotado (Melhor Envio), antes de aplicar o frete grátis."""
         from decimal import Decimal
         total = Decimal("0.00")
         for seller_data in self.selected_shipping.values():
             if "price" in seller_data:
                 total += Decimal(str(seller_data["price"]))
         return total
+
+    @property
+    def shipping_total(self):
+        """Frete cobrado do cliente: zero quando há frete grátis (a loja paga a etiqueta)."""
+        from decimal import Decimal
+        return Decimal("0.00") if self.free_shipping else self.quoted_shipping_total
 
     @property
     def item_count(self):

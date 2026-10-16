@@ -76,7 +76,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
       <header className="sticky top-0 z-50 font-atelie">
         <div className="bg-atelie-espresso text-atelie-cream text-[12px]">
           <div className="mx-auto flex h-8 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <span className="truncate">{brand.shipping} · Pix com aprovação na hora</span>
+            <span className="truncate">Frete grátis acima de R$ 299 · {brand.shipping}</span>
             <span className="hidden sm:block text-atelie-cream/75">{brand.location}</span>
           </div>
         </div>

@@ -126,8 +126,10 @@ function LoginContent() {
           </div>
 
           <div className="space-y-2">
-            {/* Recuperação de senha ainda não existe (rota /forgot-password dava 404): link volta quando a feature for criada. */}
-            <label htmlFor="login-password" className="text-sm text-atelie-ink/80">Senha</label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="login-password" className="text-sm text-atelie-ink/80">Senha</label>
+              <Link href="/esqueci-senha" className="text-xs text-atelie-clay hover:underline">Esqueceu a senha?</Link>
+            </div>
             <input
               id="login-password"
               type="password"

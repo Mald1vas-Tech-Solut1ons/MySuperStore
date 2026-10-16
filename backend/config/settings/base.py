@@ -238,6 +238,12 @@ GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 GEMINI_MODELS = env.list("GEMINI_MODELS", default=["gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"])
 BACKEND_PUBLIC_URL = env("BACKEND_PUBLIC_URL", default="http://localhost:8000")
 REST_FRAMEWORK.setdefault("DEFAULT_THROTTLE_RATES", {})["assistant"] = env("ASSISTANT_RATE", default="12/min")
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["password_reset"] = env("PASSWORD_RESET_RATE", default="5/hour")
+# Link de nova senha vale 2 horas (e morre assim que a senha muda).
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 2
+# Frete grátis (pago pela loja) quando os produtos, já com desconto, somam ao menos isto.
+from decimal import Decimal as _Decimal
+FREE_SHIPPING_MIN = _Decimal(env("FREE_SHIPPING_MIN", default="299.00"))
 MEILI_MASTER_KEY = env("MEILI_MASTER_KEY", default="devmasterkey")
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────
