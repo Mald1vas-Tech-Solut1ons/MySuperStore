@@ -667,3 +667,23 @@ class Sprint4RobustezTest(TestCase):
         c.force_authenticate(self.buyer)
         r = c.post(f"/api/v1/payments/{pay.pk}/refund/", {}, format="json")
         self.assertEqual(r.status_code, 403)
+
+
+class PhantomShippingTest(TestCase):
+    """Frete de loja que não tem mais peça na sacola não pode ser somado."""
+
+    def test_frete_de_loja_fora_da_sacola_nao_conta(self):
+        buyer = User.objects.create(email="fantasma@test.com", first_name="F", last_name="T", is_active=True)
+        mk = lambda slug: Seller.objects.create(
+            user=User.objects.create(email=f"{slug}@t.com", first_name="x", last_name="y"),
+            store_name=slug, slug=slug, status=SellerStatus.APPROVED)
+        atelie, antiga = mk("atelie-f"), mk("antiga-f")
+        cat = Category.objects.create(name="Cat F", slug="cat-f")
+        p = Product.objects.create(seller=atelie, category=cat, name="Bolsa", slug="bolsa-f",
+                                   base_price=Decimal("100.00"), is_available=True)
+        v = ProductVariant.objects.create(product=p, sku="bolsa-f-un", stock=5, is_active=True)
+        cart = Cart.objects.create(user=buyer)
+        CartItem.objects.create(cart=cart, variant=v, quantity=1)
+        cart.selected_shipping = {str(atelie.id): {"price": "20.00"}, str(antiga.id): {"price": "53.79"}}
+        cart.save()
+        self.assertEqual(cart.shipping_total, Decimal("20.00"))

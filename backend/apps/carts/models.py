@@ -69,11 +69,16 @@ class Cart(models.Model):
 
     @property
     def quoted_shipping_total(self):
-        """Frete cotado (Melhor Envio), antes de aplicar o frete grátis."""
+        """Frete cotado (Melhor Envio), antes do frete grátis — só das lojas com peça na sacola.
+
+        selected_shipping pode guardar cotações antigas de lojas que já saíram do carrinho;
+        somar tudo cobrava frete fantasma (ex.: R$ 53,79 de uma loja sem item na sacola).
+        """
         from decimal import Decimal
+        sellers_in_cart = {str(s) for s in self.items.values_list("variant__product__seller_id", flat=True)}
         total = Decimal("0.00")
-        for seller_data in self.selected_shipping.values():
-            if "price" in seller_data:
+        for seller_id, seller_data in (self.selected_shipping or {}).items():
+            if seller_id in sellers_in_cart and "price" in seller_data:
                 total += Decimal(str(seller_data["price"]))
         return total
 

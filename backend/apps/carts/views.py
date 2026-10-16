@@ -225,9 +225,10 @@ class CartShippingQuoteView(BaseCartView, generics.GenericAPIView):
                     "error": str(e)
                 }
 
-        # Atualiza o destino no banco
+        # Nova cotação invalida as escolhas anteriores (outro CEP, outra sacola).
         cart.destination_cep = dest_cep
-        cart.save(update_fields=["destination_cep"])
+        cart.selected_shipping = {}
+        cart.save(update_fields=["destination_cep", "selected_shipping"])
 
         return Response(quotes)
 
