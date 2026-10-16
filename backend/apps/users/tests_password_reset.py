@@ -52,6 +52,11 @@ class PasswordResetTest(TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("new_password", r.data)
 
+    def test_uid_adulterado_nao_quebra(self):
+        r = self.c.post("/api/v1/auth/password-reset/confirm/",
+                        {"uid": "MQ", "token": "x-y", "new_password": "NovaSenha!Forte2026"}, format="json")
+        self.assertEqual(r.status_code, 400)
+
     def test_token_invalido(self):
         uid, _ = self._link_parts()
         r = self.c.post("/api/v1/auth/password-reset/confirm/",

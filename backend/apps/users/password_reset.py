@@ -10,6 +10,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils.encoding import force_bytes, force_str
 from django.utils.html import escape
@@ -29,7 +30,8 @@ def user_from_uid(uid: str):
     try:
         pk = force_str(urlsafe_base64_decode(uid))
         return get_user_model().objects.get(pk=pk, is_active=True)
-    except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+    # ValidationError: uid adulterado que não é UUID (antes virava erro 500).
+    except (TypeError, ValueError, OverflowError, ValidationError, get_user_model().DoesNotExist):
         return None
 
 
