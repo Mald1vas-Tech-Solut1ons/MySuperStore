@@ -237,7 +237,24 @@ export default function OrdersPage() {
                             Rastreio: {sub.tracking_code.startsWith('http') ? (
                               <a href={sub.tracking_code} target="_blank" rel="noreferrer" className="text-primary hover:underline">{sub.tracking_code}</a>
                             ) : (
-                              <span>{sub.tracking_code}</span>
+                              <span className="inline-flex flex-wrap items-center gap-2">
+                                <span className="font-semibold text-foreground">{sub.tracking_code}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => navigator.clipboard?.writeText(sub.tracking_code)}
+                                  className="rounded-full border border-border px-2 py-0.5 font-sans text-[11px] hover:bg-black/5"
+                                >
+                                  Copiar
+                                </button>
+                                <a
+                                  href="https://rastreamento.correios.com.br/app/index.php"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="font-sans text-[11px] text-atelie-clay underline"
+                                >
+                                  Rastrear nos Correios
+                                </a>
+                              </span>
                             )}
                           </div>
                         )}

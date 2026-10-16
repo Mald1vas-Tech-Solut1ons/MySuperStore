@@ -281,9 +281,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 # Frete deste lojista (cliente paga; o valor vai para o lojista
                 # pagar a etiqueta no Melhor Envio). Comissão NÃO incide sobre frete.
                 # Frete grátis: o cliente não paga e a loja não recebe frete (ela paga a etiqueta).
-                sub_shipping = Decimal("0") if free_shipping else Decimal(
-                    str((selected_shipping.get(str(seller.id)) or {}).get("price", 0) or 0)
-                )
+                sub_shipping = Decimal("0") if free_shipping else cart.seller_shipping_price(seller.id)
                 commission = round(sub_subtotal * seller.commission_rate, 2)
                 # Lojista recebe: (produto - comissão) + frete cheio.
                 seller_amount = (sub_subtotal - commission) + sub_shipping

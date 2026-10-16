@@ -69,13 +69,23 @@ class Cart(models.Model):
 
     @property
     def quoted_shipping_total(self):
-        """Frete cotado (Melhor Envio), antes de aplicar o frete grátis."""
+        """Frete cotado (Melhor Envio), antes do frete grátis — só das lojas com peça na sacola.
+
+        selected_shipping pode guardar cotações antigas de lojas que já saíram do carrinho;
+        somar tudo cobrava frete fantasma (ex.: R$ 53,79 de uma loja sem item na sacola).
+        """
         from decimal import Decimal
-        total = Decimal("0.00")
-        for seller_data in self.selected_shipping.values():
-            if "price" in seller_data:
-                total += Decimal(str(seller_data["price"]))
-        return total
+        sellers_in_cart = {str(s) for s in self.items.values_list("variant__product__seller_id", flat=True)}
+        return sum((self.seller_shipping_price(sid) for sid in sellers_in_cart), Decimal("0.00"))
+
+    def seller_shipping_price(self, seller_id):
+        """Frete de UMA loja. No modo fixo o servidor impõe o preço; senão vale a cotação escolhida."""
+        from decimal import Decimal
+        from django.conf import settings
+        if settings.SHIPPING_MODE == "flat":
+            return settings.FLAT_SHIPPING_PRICE
+        data = (self.selected_shipping or {}).get(str(seller_id)) or {}
+        return Decimal(str(data.get("price", 0) or 0))
 
     @property
     def shipping_total(self):

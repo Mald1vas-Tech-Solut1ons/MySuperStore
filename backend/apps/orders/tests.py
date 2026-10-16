@@ -667,3 +667,40 @@ class Sprint4RobustezTest(TestCase):
         c.force_authenticate(self.buyer)
         r = c.post(f"/api/v1/payments/{pay.pk}/refund/", {}, format="json")
         self.assertEqual(r.status_code, 403)
+
+
+class PhantomShippingTest(TestCase):
+    """Frete de loja que não tem mais peça na sacola não pode ser somado."""
+
+    def test_frete_de_loja_fora_da_sacola_nao_conta(self):
+        buyer = User.objects.create(email="fantasma@test.com", first_name="F", last_name="T", is_active=True)
+        mk = lambda slug: Seller.objects.create(
+            user=User.objects.create(email=f"{slug}@t.com", first_name="x", last_name="y"),
+            store_name=slug, slug=slug, status=SellerStatus.APPROVED)
+        atelie, antiga = mk("atelie-f"), mk("antiga-f")
+        cat = Category.objects.create(name="Cat F", slug="cat-f")
+        p = Product.objects.create(seller=atelie, category=cat, name="Bolsa", slug="bolsa-f",
+                                   base_price=Decimal("100.00"), is_available=True)
+        v = ProductVariant.objects.create(product=p, sku="bolsa-f-un", stock=5, is_active=True)
+        cart = Cart.objects.create(user=buyer)
+        CartItem.objects.create(cart=cart, variant=v, quantity=1)
+        cart.selected_shipping = {str(atelie.id): {"price": "20.00"}, str(antiga.id): {"price": "53.79"}}
+        cart.save()
+        self.assertEqual(cart.shipping_total, Decimal("20.00"))
+
+
+@override_settings(SHIPPING_MODE="flat", FLAT_SHIPPING_PRICE=Decimal("25.00"))
+class FlatShippingTest(FreeShippingTest):
+    """Frete fixo: servidor impõe R$ 25 por loja (ignora preço vindo do navegador); grátis acima do mínimo."""
+
+    def test_abaixo_do_minimo_cobra_frete(self):
+        order = self._order(self.barata)  # selected_shipping traz 25 do teste-base; trocamos por preço forjado
+        self.assertEqual(order.shipping, Decimal("25.00"))
+
+    def test_preco_forjado_no_navegador_e_ignorado(self):
+        cart, _ = Cart.objects.get_or_create(user=self.buyer)
+        cart.items.all().delete()
+        CartItem.objects.create(cart=cart, variant=self.barata, quantity=1)
+        cart.selected_shipping = {str(self.seller.id): {"price": "0.01"}}
+        cart.save()
+        self.assertEqual(cart.shipping_total, Decimal("25.00"))
