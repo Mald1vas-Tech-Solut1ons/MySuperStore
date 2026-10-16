@@ -181,7 +181,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             # Frete: o CLIENTE paga. Vem das cotações que ele selecionou no carrinho
             # (cart.selected_shipping = {seller_id: {price, ...}}, via Melhor Envio).
             selected_shipping = cart.selected_shipping or {}
-            shipping = cart.shipping_total  # Decimal, soma do frete de todas as lojas
+            shipping = cart.quoted_shipping_total  # frete cotado; o grátis é decidido abaixo, com o desconto deste pedido
 
             coupon_code = validated_data.pop("coupon_code", None)
             discount = 0
@@ -219,6 +219,12 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
                 validated_data["notes"] = f"Cupom aplicado: {coupon_code} (-R$ {discount:.2f})\n" + validated_data.get("notes", "")
 
+            # Frete grátis medido nos produtos já com o desconto DESTE pedido (o servidor decide,
+            # não o carrinho: o cupom do checkout pode diferir do salvo no carrinho).
+            from django.conf import settings as dj_settings
+            free_shipping = (Decimal(str(subtotal)) - Decimal(str(discount or 0))) >= dj_settings.FREE_SHIPPING_MIN
+            if free_shipping:
+                shipping = Decimal("0")
             # Total final = (produtos - desconto) + frete. O desconto NÃO incide no frete.
             total = max(Decimal("0"), Decimal(str(subtotal)) - Decimal(str(discount or 0))) + Decimal(str(shipping))
 
@@ -274,7 +280,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                 sub_subtotal = max(Decimal("0"), Decimal(str(gross_subtotal)) - alloc)
                 # Frete deste lojista (cliente paga; o valor vai para o lojista
                 # pagar a etiqueta no Melhor Envio). Comissão NÃO incide sobre frete.
-                sub_shipping = Decimal(str((selected_shipping.get(str(seller.id)) or {}).get("price", 0) or 0))
+                # Frete grátis: o cliente não paga e a loja não recebe frete (ela paga a etiqueta).
+                sub_shipping = Decimal("0") if free_shipping else Decimal(
+                    str((selected_shipping.get(str(seller.id)) or {}).get("price", 0) or 0)
+                )
                 commission = round(sub_subtotal * seller.commission_rate, 2)
                 # Lojista recebe: (produto - comissão) + frete cheio.
                 seller_amount = (sub_subtotal - commission) + sub_shipping

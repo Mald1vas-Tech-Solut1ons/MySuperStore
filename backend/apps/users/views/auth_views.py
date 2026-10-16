@@ -213,3 +213,77 @@ class GoogleLoginView(APIView):
             return Response({"detail": f"Token do Google inválido. ({str(e)})"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"detail": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    POST /api/v1/auth/password-reset/ {email}
+    Sempre responde 200 com a mesma mensagem (não revela se o e-mail existe).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "password_reset"
+
+    def get_throttles(self):
+        from rest_framework.throttling import ScopedRateThrottle
+        return [ScopedRateThrottle()]
+
+    def post(self, request):
+        from apps.users.password_reset import send_password_reset_email
+
+        email = str(request.data.get("email", "")).strip()
+        if email:
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user:
+                send_password_reset_email(user)
+        return Response(
+            {"detail": "Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    POST /api/v1/auth/password-reset/confirm/ {uid, token, new_password}
+    Troca a senha e derruba todas as sessões abertas (refresh tokens na blacklist).
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "password_reset"
+
+    def get_throttles(self):
+        from rest_framework.throttling import ScopedRateThrottle
+        return [ScopedRateThrottle()]
+
+    def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.contrib.auth.tokens import default_token_generator
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
+        from apps.users.notifications import notify_password_changed
+        from apps.users.password_reset import user_from_uid
+
+        invalid = Response(
+            {"detail": "Este link expirou ou já foi usado. Peça um novo."}, status=status.HTTP_400_BAD_REQUEST
+        )
+        user = user_from_uid(str(request.data.get("uid", "")))
+        token = str(request.data.get("token", ""))
+        if user is None or not default_token_generator.check_token(user, token):
+            return invalid
+
+        new_password = str(request.data.get("new_password", ""))
+        try:
+            validate_password(new_password, user)
+        except DjangoValidationError as exc:
+            return Response({"new_password": list(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        for outstanding in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=outstanding)
+        try:
+            notify_password_changed(user)
+        except Exception:  # noqa: BLE001 — aviso é best-effort
+            pass
+        return Response({"detail": "Senha alterada com sucesso."}, status=status.HTTP_200_OK)

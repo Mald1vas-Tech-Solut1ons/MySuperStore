@@ -108,6 +108,8 @@ class FinancialFlowTest(TestCase):
         self.assertEqual(order.total, Decimal("360.00"))
         self.assert_conserves_value(order)
 
+    # Frete grátis desligado aqui: este teste trata do frete PAGO pelo cliente indo para o lojista.
+    @override_settings(FREE_SHIPPING_MIN=Decimal("999999"))
     def test_frete_cliente_paga_vai_pro_lojista(self):
         # Cliente escolheu frete: R$20 na loja Auth, R$30 na loja NoAuth.
         self.cart.selected_shipping = {
@@ -525,3 +527,55 @@ class CouponUsageTest(TestCase):
         self.coupon.save(update_fields=["valid_to"])
         with self.assertRaises(self.ValidationError):
             self._order()
+
+
+class FreeShippingTest(TestCase):
+    """Frete grátis a partir de FREE_SHIPPING_MIN, medido nos produtos já com o desconto do pedido."""
+
+    def setUp(self):
+        self.buyer = User.objects.create(email="frete@test.com", first_name="F", last_name="G", is_active=True)
+        self.seller = Seller.objects.create(
+            user=User.objects.create(email="loja-frete@test.com", first_name="L", last_name="F"),
+            store_name="Loja Frete", slug="loja-frete", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat Frete", slug="cat-frete")
+
+        def variant(slug, price):
+            p = Product.objects.create(seller=self.seller, category=cat, name=slug, slug=slug,
+                                       base_price=Decimal(price), is_available=True)
+            return ProductVariant.objects.create(product=p, sku=f"{slug}-un", stock=10, is_active=True)
+
+        self.cara = variant("bolsa-300", "300.00")
+        self.barata = variant("bolsa-100", "100.00")
+
+    def _order(self, variant, coupon=None):
+        cart, _ = Cart.objects.get_or_create(user=self.buyer)
+        cart.items.all().delete()
+        CartItem.objects.create(cart=cart, variant=variant, quantity=1)
+        cart.selected_shipping = {str(self.seller.id): {"price": "25.00", "service": "PAC"}}
+        cart.save()
+        data = dict(ADDRESS, **({"coupon_code": coupon} if coupon else {}))
+        request = APIRequestFactory().post("/api/v1/orders/", data)
+        request.user = self.buyer
+        s = OrderCreateSerializer(data=data, context={"request": request})
+        s.is_valid(raise_exception=True)
+        return s.save()
+
+    def test_acima_do_minimo_frete_gratis(self):
+        order = self._order(self.cara)
+        self.assertEqual(order.shipping, Decimal("0"))
+        self.assertEqual(order.total, Decimal("300.00"))
+        self.assertEqual(order.sub_orders.first().shipping, Decimal("0"))
+
+    def test_abaixo_do_minimo_cobra_frete(self):
+        order = self._order(self.barata)
+        self.assertEqual(order.shipping, Decimal("25.00"))
+        self.assertEqual(order.total, Decimal("125.00"))
+
+    def test_cupom_que_derruba_abaixo_do_minimo_cobra_frete(self):
+        now = timezone.now()
+        Coupon.objects.create(code="DEZ", discount_percentage=Decimal("10"), active=True,
+                              valid_from=now - timedelta(days=1), valid_to=now + timedelta(days=1))
+        order = self._order(self.cara, coupon="DEZ")  # 300 - 10% = 270 < 299
+        self.assertEqual(order.shipping, Decimal("25.00"))
+        self.assertEqual(order.total, Decimal("295.00"))

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { SiteHeader as Header } from "@/components/storefront/SiteHeader";
 import { SiteFooter } from "@/components/storefront/SiteFooter";
 import { TrustBadges } from "@/components/storefront/TrustBadges";
+import { FreeShippingProgress } from "@/components/storefront/FreeShippingProgress";
 import { cartApi } from "@/lib/api";
 import { Cart } from "@/types";
 import { useCartStore } from "@/store/cartStore";
@@ -220,24 +221,24 @@ export default function CartPage() {
             {/* RESUMO DO PEDIDO */}
             <div className="lg:col-span-1">
               <div className="p-6 rounded-2xl border border-border/40 bg-card/60 backdrop-blur-md sticky top-24 space-y-6">
-                <h3 className="font-display font-bold text-xl border-b border-border/40 pb-4">Resumo do Pedido</h3>
+                <h3 className="font-serif text-2xl border-b border-border/40 pb-4">Resumo do pedido</h3>
+                <FreeShippingProgress
+                  amount={Number(cart.total) - Number((cart as any).shipping_total || 0)}
+                  min={Number((cart as any).free_shipping_min || 0)}
+                />
                 
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal ({cart.item_count} itens)</span>
-                    <span className="line-through decoration-red-500/50">
-                      De: R$ {Number(
-                        cart.items.reduce((acc, curr) => acc + ((curr.variant.product_base_price ? Number(curr.variant.product_base_price) : Number(curr.variant.effective_price)) * curr.quantity || Number(curr.subtotal)), 0)
-                      ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-primary">
-                    <span>Para:</span>
+                    <span>Subtotal ({cart.item_count} {cart.item_count === 1 ? "item" : "itens"})</span>
                     <span>R$ {Number(cart.subtotal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Frete</span>
-                    <span className="text-green-500 font-semibold">Grátis</span>
+                    {(cart as any).free_shipping ? (
+                      <span className="font-semibold text-atelie-clay">Grátis</span>
+                    ) : (
+                      <span>Calculado no checkout</span>
+                    )}
                   </div>
                   {cart.coupon_code && (
                     <div className="flex justify-between text-emerald-400">
@@ -259,23 +260,6 @@ export default function CartPage() {
                       </span>
                     </div>
                   )}
-                  {(() => {
-                    const baseTotal = cart.items.reduce((acc, curr) => {
-                      const originalPrice = curr.variant.price ? Number(curr.variant.price) : Number(curr.variant.product_base_price);
-                      return acc + (originalPrice * curr.quantity);
-                    }, 0);
-                    const finalTotal = Number(cart.total);
-                    const diff = baseTotal - finalTotal;
-                    if (diff > 0) {
-                      return (
-                        <div className="flex justify-between font-bold text-emerald-500 bg-emerald-500/10 p-2 rounded-lg mt-2 shadow-[0_0_10px_rgba(16,185,129,0.1)] border border-emerald-500/20">
-                          <span>✨ Descontos Obtidos</span>
-                          <span>- R$ {diff.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
                 </div>
 
                 <form onSubmit={applyCoupon} className="flex gap-2 pt-2">

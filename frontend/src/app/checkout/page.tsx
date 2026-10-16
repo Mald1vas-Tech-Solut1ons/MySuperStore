@@ -634,7 +634,7 @@ function CheckoutInner() {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Frete</span>
-                  <span>{Number(cart?.shipping_total || 0) > 0 ? `R$ ${brl(cart?.shipping_total || 0)}` : "A calcular"}</span>
+                  <span>{(cart as any)?.free_shipping ? "Grátis" : Number(cart?.shipping_total || 0) > 0 ? `R$ ${brl(cart?.shipping_total || 0)}` : "A calcular"}</span>
                 </div>
 
                 <div className="pt-6 border-t border-border/40 flex justify-between items-end mt-4">
