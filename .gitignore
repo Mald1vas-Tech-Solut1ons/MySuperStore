@@ -77,3 +77,6 @@ frontend/MySuperStore Marca.html
 
 # Cert Efí em base64 (segredo — gerado para colar no Railway)
 EFI_PIX_CERT_PROD_BASE64.txt
+
+# Configuração de lojas de clientes (YAML/env com segredos)
+deploy/stores/

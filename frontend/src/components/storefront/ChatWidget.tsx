@@ -10,10 +10,10 @@ import { brl } from "@/lib/storefront";
 type Product = { slug: string; name: string; price: number; image?: string | null };
 type Msg = { role: "user" | "assistant"; content: string; products?: Product[]; local?: boolean; wa?: boolean };
 
-const GREETING = `Oi! Sou a assistente do ${brand.name}. Posso te ajudar com as peças, preços, encomendas sob medida, frete e cuidados com o macramê. 🧶`;
-const CHIPS = ["Quais bolsas estão disponíveis?", "Como funciona o sob medida?", "Quanto custa o frete?", "Como cuidar do macramê?"];
+const GREETING = brand.chat.greeting;
+const CHIPS = brand.chat.chips;
 const ERROR_TEXT = "Estou com muita procura agora. Fale com a gente pelo WhatsApp que respondemos rapidinho.";
-const WA_LINK = whatsappLink("Olá! Vim pelo site e queria falar com o ateliê.");
+const WA_LINK = whatsappLink(`Olá! Vim pelo site e queria falar com o ${brand.shopNoun}.`);
 
 // Atendimento por IA: o histórico vai ao backend, que fala com o Gemini usando
 // catálogo, cupons e base de conhecimento reais. Nenhuma chave no navegador.

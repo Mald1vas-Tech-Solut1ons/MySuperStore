@@ -1,5 +1,6 @@
 import { Lock, Landmark, QrCode, RotateCcw, Truck, MessageCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { brand } from "@/config/brand";
 
 // Selos de confiança: só afirmações verdadeiras (nada de "certificado"/"blindado").
 type Badge = { icon: LucideIcon; title: string; description: string };
@@ -10,7 +11,7 @@ const BADGES: readonly Badge[] = [
   { icon: QrCode, title: "Pix ou cartão", description: "Aprovação do Pix na hora" },
   { icon: RotateCcw, title: "Troca em até 7 dias", description: "Direito de arrependimento (CDC)" },
   { icon: Truck, title: "Envio rastreado", description: "Para todo o Brasil" },
-  { icon: MessageCircle, title: "Atendimento humano", description: "Fale com o ateliê no WhatsApp" },
+  { icon: MessageCircle, title: "Atendimento humano", description: `Fale com o ${brand.shopNoun} no WhatsApp` },
 ];
 
 export function TrustBadges({ variant = "row", className = "" }: { variant?: "row" | "compact"; className?: string }) {
