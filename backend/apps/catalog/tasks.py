@@ -13,10 +13,6 @@ def optimize_product_image_task(product_image_id):
     except ProductImage.DoesNotExist:
         return f"Imagem de produto {product_image_id} não encontrada."
 
-    # Se a imagem já estiver no formato webp, pula a otimização para evitar processamento redundante
-    if product_image.image.name.lower().endswith(".webp"):
-        return f"Imagem {product_image.id} já está em formato WebP."
-
     # Carrega a imagem original do storage (local ou S3)
     img_field = product_image.image
     try:
@@ -30,6 +26,9 @@ def optimize_product_image_task(product_image_id):
     # Processamento de imagem com a biblioteca Pillow
     try:
         image = Image.open(io.BytesIO(img_data))
+        # Já é WebP no tamanho final: nada a fazer (decidido pelo conteúdo, não pelo nome).
+        if image.format == "WEBP" and max(image.size) <= 1200:
+            return f"Imagem {product_image.id} já está otimizada."
         
         # Converte para RGB se necessário (WebP suporta RGB e RGBA)
         if image.mode not in ("RGB", "RGBA"):
@@ -54,14 +53,15 @@ def optimize_product_image_task(product_image_id):
     # Nota: save=False para evitar o gatilho recursivo do signal. Atualizamos via queryset
     optimized_file = ContentFile(output_buffer.read(), name=new_filename)
     
-    # Exclui o arquivo físico antigo
-    try:
-        img_field.storage.delete(img_field.name)
-    except Exception:
-        pass
-
-    # Atualiza o arquivo no banco
+    old_name = img_field.name
+    # Grava o novo arquivo e atualiza o banco via queryset: .save() no model dispararia
+    # o post_save de novo (era a origem do loop). Só então apaga o original.
     product_image.image.save(new_filename, optimized_file, save=False)
-    product_image.save(update_fields=["image"])
+    ProductImage.objects.filter(pk=product_image.pk).update(image=product_image.image.name)
+    if old_name and old_name != product_image.image.name:
+        try:
+            img_field.storage.delete(old_name)
+        except Exception:
+            pass
 
     return f"Imagem {product_image.id} otimizada com sucesso para WebP (Pedido: {new_filename})"

@@ -14,8 +14,10 @@ def optimize_product_image_on_save(sender, instance, created, **kwargs):
     """
     Sinal post_save para otimizar e converter a imagem do produto para WebP em background.
     """
-    # Enfileira o processamento apenas se a imagem possuir um nome válido e não for WebP ainda
-    if instance.image and not instance.image.name.lower().endswith(".webp"):
+    # Só em imagem recém-criada. Storages como o Cloudinary guardam o nome SEM extensão,
+    # então checar ".webp" pelo nome disparava a otimização a cada save — loop infinito
+    # que renomeava e apagava o arquivo. O formato real é checado na task (Pillow).
+    if created and instance.image:
         image_id = str(instance.id)
 
         def _enqueue():
