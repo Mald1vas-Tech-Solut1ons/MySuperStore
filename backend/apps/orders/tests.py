@@ -255,7 +255,9 @@ class PixRefundTest(TestCase):
         mock_refund.return_value = {"status": "DEVOLVIDO", "id": "dev1"}
 
         client = APIClient()
-        client.force_authenticate(user=self.buyer)
+        # Estorno é ação da loja/admin (o cliente não se autoestorna desde o Sprint 4).
+        admin = User.objects.create(email="admin-pix@test.com", first_name="A", last_name="D", role="admin", is_staff=True)
+        client.force_authenticate(user=admin)
         resp = client.post(f"/api/v1/payments/{self.payment.id}/refund/", {}, format="json")
         self.assertEqual(resp.status_code, 200, resp.content)
 
@@ -579,3 +581,89 @@ class FreeShippingTest(TestCase):
         order = self._order(self.cara, coupon="DEZ")  # 300 - 10% = 270 < 299
         self.assertEqual(order.shipping, Decimal("25.00"))
         self.assertEqual(order.total, Decimal("295.00"))
+
+
+class Sprint4RobustezTest(TestCase):
+    """Peça única não é vendida duas vezes; estornos com trava, teto e confirmação do Efí."""
+
+    def setUp(self):
+        from rest_framework.exceptions import ValidationError
+        from apps.orders.models import Order
+
+        self.VE = ValidationError
+        self.seller = Seller.objects.create(
+            user=User.objects.create(email="loja-s4@test.com", first_name="L", last_name="S"),
+            store_name="Loja S4", slug="loja-s4", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat S4", slug="cat-s4")
+        p = Product.objects.create(seller=self.seller, category=cat, name="Peça Única", slug="peca-unica",
+                                   base_price=Decimal("100.00"), is_available=True)
+        self.variant = ProductVariant.objects.create(product=p, sku="peca-unica-un", stock=1, is_active=True)
+        self.buyer = User.objects.create(email="comprador-s4@test.com", first_name="C", last_name="S", is_active=True)
+        self.order = Order.objects.create(
+            user=self.buyer, order_number="20261016-4444", subtotal=Decimal("100.00"), total=Decimal("100.00"),
+            address_recipient="x", address_cep="01001000", address_logradouro="r",
+            address_numero="1", address_bairro="c", address_cidade="SP", address_uf="SP",
+        )
+
+    def _serializer(self, email):
+        buyer = User.objects.create(email=email, first_name="B", last_name="S", is_active=True)
+        cart = Cart.objects.create(user=buyer)
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+        request = APIRequestFactory().post("/api/v1/orders/", ADDRESS)
+        request.user = buyer
+        s = OrderCreateSerializer(data=dict(ADDRESS), context={"request": request})
+        s.is_valid(raise_exception=True)  # as duas validam com estoque 1 (a corrida)
+        return s
+
+    def test_peca_unica_nao_vende_duas_vezes(self):
+        from apps.orders.models import Order
+        a, b = self._serializer("a-s4@test.com"), self._serializer("b-s4@test.com")
+        a.save()
+        with self.assertRaises(self.VE):
+            b.save()
+        self.variant.refresh_from_db()
+        self.assertEqual(self.variant.stock, 0)
+        self.assertEqual(Order.objects.filter(user__email="b-s4@test.com").count(), 0)
+
+    def _pix_payment(self, amount="100.00"):
+        return Payment.objects.create(order=self.order, method=PaymentMethod.PIX, amount=Decimal(amount),
+                                      status=PaymentStatus.APPROVED, efi_txid="TXS4")
+
+    @mock.patch("apps.payments.services.EfiPixService.is_configured", return_value=True)
+    @mock.patch("apps.payments.services.EfiPixService.refund_pix", return_value={"id": "d1", "status": "EM_PROCESSAMENTO"})
+    def test_estornos_parciais_somam_e_respeitam_teto(self, refund_pix, _cfg):
+        from apps.payments.refunds import RefundError, refund_payment
+        pay = self._pix_payment()
+        refund_payment(pay.pk, Decimal("60"))
+        with self.assertRaises(RefundError):
+            refund_payment(pay.pk, Decimal("60"))  # saldo é 40
+        p, value, full = refund_payment(pay.pk)  # estorna o saldo
+        self.assertEqual((p.refunded_amount, value, full, p.status), (Decimal("100.00"), Decimal("40.00"), True, PaymentStatus.REFUNDED))
+        ids = [c.kwargs["devolution_id"] for c in refund_pix.call_args_list]
+        self.assertEqual(len(ids), len(set(ids)))  # um id por estorno
+
+    @mock.patch("apps.payments.services.EfiPixService.is_configured", return_value=True)
+    @mock.patch("apps.payments.services.EfiPixService.refund_pix", return_value={"nome": "erro", "mensagem": "x"})
+    def test_efi_recusou_nada_muda(self, *_):
+        from apps.payments.refunds import RefundError, refund_payment
+        pay = self._pix_payment()
+        with self.assertRaises(RefundError):
+            refund_payment(pay.pk, Decimal("10"))
+        pay.refresh_from_db()
+        self.assertEqual((pay.refunded_amount, pay.status), (Decimal("0"), PaymentStatus.APPROVED))
+
+    def test_cartao_recusa_estorno_parcial(self):
+        from apps.payments.refunds import RefundError, refund_payment
+        pay = Payment.objects.create(order=self.order, method=PaymentMethod.CREDIT_CARD, amount=Decimal("100.00"),
+                                     status=PaymentStatus.APPROVED, efi_charge_id="123")
+        with self.assertRaises(RefundError):
+            refund_payment(pay.pk, Decimal("30"))
+
+    def test_cliente_nao_se_autoestorna(self):
+        from rest_framework.test import APIClient
+        pay = self._pix_payment()
+        c = APIClient()
+        c.force_authenticate(self.buyer)
+        r = c.post(f"/api/v1/payments/{pay.pk}/refund/", {}, format="json")
+        self.assertEqual(r.status_code, 403)

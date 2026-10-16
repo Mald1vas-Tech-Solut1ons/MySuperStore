@@ -158,7 +158,7 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["patch"])
     def update_status(self, request, pk=None):
         """Lojista atualiza o status da devolução"""
-        from .models import ReturnStatus
+        from .models import ReturnRequest, ReturnStatus
         rr = self.get_object()
         
         if not hasattr(request.user, "seller_profile") or rr.order_item.sub_order.seller != request.user.seller_profile:
@@ -176,6 +176,9 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
 
             # Estorno do item: devolve o valor ao cliente (Efí) e o estoque ao vendedor
             if new_status == "refunded":
+                # Uma devolução só é estornada uma vez (antes, reenviar o status estornava de novo).
+                if ReturnRequest.objects.filter(pk=rr.pk, status="refunded").exists():
+                    return Response({"error": "Esta devolução já foi estornada."}, status=400)
                 self._process_item_refund(rr.order_item)
 
         if seller_notes is not None:
@@ -192,42 +195,23 @@ class ReturnRequestViewSet(viewsets.ModelViewSet):
         estorno acumulado atinge o total do pedido (estorno integral); estornos
         parciais por item são registrados localmente até fechar o valor cheio.
         """
-        import logging
         from django.db import transaction
-        from django.utils import timezone
+        from rest_framework.exceptions import ValidationError
         from apps.catalog.models import ProductVariant
-        from apps.payments.models import Payment, PaymentMethod, PaymentStatus
-        from apps.payments.services import EfiCardService
+        from apps.payments.models import Payment
+        from apps.payments.refunds import RefundError, refund_payment
 
-        logger = logging.getLogger(__name__)
         sub_order = order_item.sub_order
         order = sub_order.order
         payment = Payment.objects.filter(order=order).first()
 
         with transaction.atomic():
             if payment:
-                already = payment.refunded_amount or 0
-                new_total_refunded = already + order_item.total
-                is_full_refund = new_total_refunded >= payment.amount
-
-                # Estorno no provedor (somente cartão). O cancel do Efí é integral,
-                # então só o acionamos quando o estorno fecha o valor total do pedido.
-                if (
-                    is_full_refund
-                    and payment.efi_charge_id
-                    and payment.method in (PaymentMethod.CREDIT_CARD, PaymentMethod.DEBIT_CARD)
-                ):
-                    try:
-                        EfiCardService.refund_charge(payment.efi_charge_id, amount=payment.amount)
-                    except Exception as exc:
-                        # Falha no provedor não deve travar a baixa; fica para conciliação manual.
-                        logger.error("Falha ao estornar cobrança Efí %s: %s", payment.efi_charge_id, exc)
-
-                payment.refunded_amount = new_total_refunded
-                payment.refunded_at = timezone.now()
-                if is_full_refund:
-                    payment.status = PaymentStatus.REFUNDED
-                payment.save(update_fields=["refunded_amount", "refunded_at", "status", "updated_at"])
+                # Mesmas regras do estorno do pagamento: trava, teto, Efí confirma antes.
+                try:
+                    refund_payment(payment.pk, order_item.total)
+                except RefundError as exc:
+                    raise ValidationError({"detail": exc.message})
 
             # Devolve o item ao estoque do vendedor
             if order_item.variant_id:

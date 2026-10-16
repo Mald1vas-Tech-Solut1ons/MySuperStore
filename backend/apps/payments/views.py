@@ -292,60 +292,33 @@ def refund_payment_view(request, pk):
     except Payment.DoesNotExist:
         return Response({"detail": "Pagamento não encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
+    from .refunds import RefundError, refund_payment
+
     order = payment.order
-    is_owner = order.user_id == request.user.id
+    # Estorno é decisão de quem vende (ou do admin). O cliente pede pela devolução;
+    # antes ele mesmo podia se estornar sem devolver a peça.
     is_admin = getattr(request.user, "role", None) == "admin" or request.user.is_staff
-    if not (is_owner or is_admin):
+    is_seller = order.sub_orders.filter(seller__user=request.user).exists()
+    if not (is_admin or is_seller):
         return Response({"detail": "Sem permissão para estornar este pedido."},
                         status=status.HTTP_403_FORBIDDEN)
 
-    if payment.status != PaymentStatus.APPROVED:
-        return Response(
-            {"detail": f"Só é possível estornar pagamentos aprovados (atual: {payment.get_status_display()})."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
     ser = RefundSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
-    amount = ser.validated_data.get("amount")
+    try:
+        payment, refunded_value, full_refund = refund_payment(payment.pk, ser.validated_data.get("amount"))
+    except RefundError as exc:
+        return Response({"detail": exc.message}, status=exc.status_code)
 
-    refund_value = amount if amount is not None else payment.amount
-
-    with transaction.atomic():
-        if payment.method in (PaymentMethod.CREDIT_CARD, PaymentMethod.DEBIT_CARD) and payment.efi_charge_id:
-            try:
-                # Se for estorno parcial, pode não ser suportado nativamente por default
-                # no One-Step, mas a SDK permite
-                EfiCardService.refund_charge(payment.efi_charge_id, amount=amount)
-            except Exception as e:
-                return Response({"detail": f"Erro no Efí: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-        elif payment.method == PaymentMethod.PIX and payment.efi_txid and EfiPixService.is_configured():
-            try:
-                # Devolução do PIX no Efí (pix_devolution). idempotente pelo id da devolução.
-                EfiPixService.refund_pix(
-                    payment.efi_txid, refund_value, devolution_id=f"dev{payment.id}",
-                )
-            except Exception as e:
-                return Response({"detail": f"Erro ao devolver PIX no Efí: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
-
-        refunded_total = amount if amount is not None else payment.amount
-        payment.refunded_amount = refunded_total
-        payment.refunded_at = timezone.now()
-        
-        full_refund = refunded_total >= payment.amount
-        if full_refund:
-            payment.status = PaymentStatus.REFUNDED
-        payment.save(update_fields=[
-            "refunded_amount", "refunded_at", "status", "updated_at",
-        ])
-
-        if full_refund:
+    if full_refund:
+        with transaction.atomic():
             restore_stock(order)
             order.status = OrderStatus.REFUNDED
             order.save(update_fields=["status", "updated_at"])
             for sub in order.sub_orders.all():
                 sub.status = OrderStatus.REFUNDED
                 sub.save(update_fields=["status", "updated_at"])
+    refunded_total = payment.refunded_amount
 
     return Response({
         "detail": "Estorno processado." if full_refund else "Estorno parcial processado.",
