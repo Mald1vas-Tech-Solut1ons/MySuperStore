@@ -44,36 +44,46 @@ function Storefront() {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [allProducts, setAllProducts] = useState<StoreProduct[]>([]);
 
   // Lojas em destaque e categorias: uma vez por visita.
   useEffect(() => {
     fetchFeaturedStores().then(setStores).catch(() => setStores([]));
     fetchCategories().then(setCategories).catch(() => setCategories([]));
-  }, []);
+    fetchProducts({ page_size: 100 }).then(setAllProducts).catch(() => setAllProducts([]));
+  }, [retry]);
 
   // Produtos: refaz a busca quando filtro/busca mudam.
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFailed(false);
     fetchProducts({ ...(category ? { category } : {}), ...(search ? { search } : {}) })
       .then((rows) => alive && setProducts(rows))
-      .catch(() => alive && setProducts([]))
+      .catch(() => {
+        if (!alive) return;
+        setFailed(true);
+        // Instabilidade passageira (ex.: deploy): tenta de novo sozinho.
+        setTimeout(() => alive && setRetry((n) => n + 1), 4000);
+      })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [category, search]);
+  }, [category, search, retry]);
 
   const featured = stores[0] ?? null;
 
   // Só mostra categorias que têm peças — com uma loja artesanal, menos é mais.
   const usedCategories = useMemo(() => {
-    const used = new Set(products.map((p) => p.category_slug).filter(Boolean));
+    const used = new Set(allProducts.map((p) => p.category_slug).filter(Boolean));
     const list = categories.filter((c) => used.has(c.slug));
     return browsing && category && !list.some((c) => c.slug === category)
       ? [...list, { id: category, slug: category, name: category, image: null }]
       : list;
-  }, [categories, products, browsing, category]);
+  }, [categories, allProducts, browsing, category]);
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -112,6 +122,15 @@ function Storefront() {
             loading={loading}
             onOpen={(slug) => setParam("product", slug)}
             title={gridTitle}
+            empty={
+              failed ? (
+                <div className="rounded-3xl bg-white/50 p-10 text-center ring-1 ring-black/5">
+                  <h3 className="font-serif text-3xl text-atelie-ink">Estamos recarregando a coleção</h3>
+                  <p className="mx-auto mt-3 max-w-md text-[15px] text-atelie-ink/60">Houve uma instabilidade rápida. Tentando de novo…</p>
+                  <button type="button" onClick={() => setRetry((n) => n + 1)} className="mt-6 h-11 rounded-full bg-atelie-ink px-6 text-sm text-atelie-cream">Tentar agora</button>
+                </div>
+              ) : undefined
+            }
             subtitle={browsing ? undefined : "Cada peça é feita à mão, uma a uma. Quando acaba, a próxima pode sair diferente — e esse é o charme."}
           />
         </div>

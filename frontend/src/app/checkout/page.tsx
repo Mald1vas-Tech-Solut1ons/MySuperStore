@@ -3,7 +3,9 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useRef } from "react";
-import { Header } from "@/components/Header";
+import { SiteHeader as Header } from "@/components/storefront/SiteHeader";
+import { SiteFooter } from "@/components/storefront/SiteFooter";
+import { TrustBadges } from "@/components/storefront/TrustBadges";
 import { cartApi, ordersApi, paymentsApi, PaymentMethodChoice, userApi, authApi } from "@/lib/api";
 import { Cart } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -321,7 +323,7 @@ function CheckoutInner() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
         <Header />
         <main className="flex-grow flex items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -333,7 +335,7 @@ function CheckoutInner() {
   // ── Success ───────────────────────────────────────────────────────────────
   if (successOrder) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
         <Header />
         <main className="flex-grow flex flex-col items-center justify-center p-6 text-center">
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
@@ -356,7 +358,7 @@ function CheckoutInner() {
   // ── Awaiting PIX ──────────────────────────────────────────────────────────
   if (awaitingPix && pix) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
         <Header />
         <main className="flex-grow flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto w-full">
           <QrCode className="h-10 w-10 text-primary mb-4" />
@@ -395,7 +397,7 @@ function CheckoutInner() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-atelie-wall font-atelie text-atelie-ink">
       <Header />
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center gap-3 mb-10">
@@ -668,7 +670,9 @@ function CheckoutInner() {
             </div>
           </div>
         </form>
+        <TrustBadges className="mt-12" />
       </main>
+      <SiteFooter />
     </div>
   );
 }

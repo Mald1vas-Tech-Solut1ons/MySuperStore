@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --background: 40 20% 98%; /* Ivory/Off-white background */
-    --foreground: 220 20% 10%; /* Dark charcoal text */
+    --background: 35 43% 92%; /* Ateliê: creme #F4EDE3 */
+    --foreground: 24 15% 11%; /* Ateliê: tinta #1F1A17 */
 
     --card: 0 0% 100%;
     --card-foreground: 220 20% 10%;
@@ -13,24 +13,24 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 40 64% 44%; /* Ouro profundo Saturno (#B98A2A) */
-    --primary-foreground: 40 20% 98%;
+    --primary: 18 48% 44%; /* Ateliê: argila #A65A3A */
+    --primary-foreground: 35 43% 95%;
 
-    --secondary: 40 15% 92%; /* Soft warm silver/gray */
+    --secondary: 36 38% 85%; /* Ateliê: areia #E8DCCA */
     --secondary-foreground: 220 20% 10%;
 
-    --muted: 40 10% 95%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 36 30% 89%;
+    --muted-foreground: 24 10% 38%;
 
-    --accent: 43 80% 95%;
-    --accent-foreground: 43 80% 45%;
+    --accent: 36 38% 87%;
+    --accent-foreground: 18 48% 38%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 40 10% 88%;
-    --input: 40 10% 88%;
-    --ring: 43 80% 45%;
+    --border: 30 20% 82%;
+    --input: 30 20% 82%;
+    --ring: 18 48% 44%;
 
     --radius: 0.75rem;
   }
