@@ -157,6 +157,16 @@ else:
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
 
+# ── Limites de upload (API roda numa VM de 1 GB) ─────────────────────────────
+# Teto do corpo de qualquer requisição, aplicado no daphne antes de receber os bytes
+# (config/daphne_patches.py). O maior envio legítimo pela API é o vídeo de apresentação
+# da loja (30 MB) com logo/banners; o vídeo do produto vai direto ao Cloudinary.
+MAX_REQUEST_BODY_BYTES = env.int("MAX_REQUEST_BODY_BYTES", default=55 * 1024 * 1024)
+PRODUCT_PHOTO_MAX_BYTES = 10 * 1024 * 1024
+PRODUCT_PHOTO_MAX_PIXELS = 40_000_000  # ~8000x5000; acima disso é bomba de descompressão
+PRODUCT_VIDEO_MAX_BYTES = 50 * 1024 * 1024
+PRODUCT_VIDEO_FORMATS = ["mp4", "mov", "webm"]
+
 # ── DRF ─────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

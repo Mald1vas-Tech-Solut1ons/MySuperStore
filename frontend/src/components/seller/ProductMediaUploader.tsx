@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import axios, { type AxiosProgressEvent } from "axios";
 import {
   ImagePlus, Star, Trash2, Loader2, Film, X, AlertTriangle, Info, Video,
 } from "lucide-react";
-import { sellerDashboardApi } from "@/lib/api";
+import { sellerDashboardApi, type VideoUploadSignature } from "@/lib/api";
 import { compressImage } from "@/lib/imageCompression";
 
 export interface UploaderImage {
@@ -49,6 +50,7 @@ export function ProductMediaUploader({
   }, [initialVideoUrl]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
   const [busyImageId, setBusyImageId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [externalUrlInput, setExternalUrlInput] = useState("");
@@ -118,7 +120,11 @@ export function ProductMediaUploader({
         setImages(current);
         emit(current, videoUrl);
       } catch (err: any) {
-        setError(err.response?.data?.detail || "Falha ao enviar uma das fotos.");
+        setError(
+          err.response?.data?.detail ||
+            err.response?.data?.image?.[0] ||
+            "Falha ao enviar uma das fotos."
+        );
       }
     }
     setUploadingPhotos(false);
@@ -170,18 +176,55 @@ export function ProductMediaUploader({
       return;
     }
     setUploadingVideo(true);
+    setVideoProgress(0);
     try {
-      const fd = new FormData();
-      fd.append("video", file);
-      const { data } = await sellerDashboardApi.products.uploadVideo(productId, fd);
-      setVideoUrl(data.video_url);
-      emit(images, data.video_url);
+      const url = await sendVideo(file);
+      setVideoUrl(url);
+      emit(images, url);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Falha ao enviar o vídeo.");
+      setError(
+        err.response?.data?.detail ||
+          err.response?.data?.error?.message ||
+          "Falha ao enviar o vídeo."
+      );
     } finally {
       setUploadingVideo(false);
+      setVideoProgress(null);
       if (videoInput.current) videoInput.current.value = "";
     }
+  };
+
+  /**
+   * Vídeo vai direto do navegador ao Cloudinary (assinatura da API): os bytes não passam
+   * pela VM da API (1 GB). Sem Cloudinary (dev) ou com API antiga, cai no multipart.
+   */
+  const sendVideo = async (file: File): Promise<string> => {
+    const onUploadProgress = (e: AxiosProgressEvent) => {
+      if (e.total) setVideoProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    let sig: VideoUploadSignature = { direct: false };
+    try {
+      ({ data: sig } = await sellerDashboardApi.products.videoUploadSignature(productId));
+    } catch (err: any) {
+      if (err.response?.status !== 404) throw err;
+    }
+
+    if (!sig.direct) {
+      const fd = new FormData();
+      fd.append("video", file);
+      const { data } = await sellerDashboardApi.products.uploadVideo(productId, fd, onUploadProgress);
+      return data.video_url;
+    }
+
+    const fd = new FormData();
+    Object.entries(sig.params).forEach(([k, v]) => fd.append(k, String(v)));
+    fd.append("api_key", sig.api_key);
+    fd.append("signature", sig.signature);
+    fd.append("file", file);
+    // axios "puro" (sem o interceptor da API): o token do lojista não vai para o Cloudinary.
+    await axios.post(sig.upload_url, fd, { onUploadProgress });
+    const { data } = await sellerDashboardApi.products.attachVideo(productId, sig.params.public_id);
+    return data.video_url;
   };
 
   const handleRemoveVideo = async () => {
@@ -336,7 +379,9 @@ export function ProductMediaUploader({
             {uploadingVideo ? (
               <>
                 <Loader2 className="w-7 h-7 animate-spin" />
-                <span className="text-xs font-semibold">Enviando vídeo...</span>
+                <span className="text-xs font-semibold">
+                  Enviando vídeo...{videoProgress !== null && videoProgress > 0 ? ` ${videoProgress}%` : ""}
+                </span>
               </>
             ) : (
               <>
