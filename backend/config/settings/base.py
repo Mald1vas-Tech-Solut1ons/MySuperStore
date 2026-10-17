@@ -313,6 +313,8 @@ if _efi_cert_b64:
 
 EFI_PIX_KEY = env("EFI_PIX_KEY", default="")  # chave PIX recebedora da plataforma
 EFI_PIX_EXPIRACAO = env.int("EFI_PIX_EXPIRACAO", default=3600)
+# Descrição que aparece no app do banco do pagador (o nome do recebedor é o titular da conta Efí).
+STORE_PIX_LABEL = env("STORE_PIX_LABEL", default="Ateliê Eli Trassi Macramê")
 
 # --- API Cobranças (cartão) ---
 EFI_COBRANCAS_CLIENT_ID = env(f"EFI_COBRANCAS_CLIENT_ID_{_efi_sfx}", default="")

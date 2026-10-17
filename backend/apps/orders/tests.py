@@ -550,11 +550,12 @@ class FreeShippingTest(TestCase):
         self.cara = variant("bolsa-300", "300.00")
         self.barata = variant("bolsa-100", "100.00")
 
-    def _order(self, variant, coupon=None):
+    def _order(self, variant, coupon=None, cart_coupon=None):
         cart, _ = Cart.objects.get_or_create(user=self.buyer)
         cart.items.all().delete()
         CartItem.objects.create(cart=cart, variant=variant, quantity=1)
         cart.selected_shipping = {str(self.seller.id): {"price": "25.00", "service": "PAC"}}
+        cart.coupon = cart_coupon
         cart.save()
         data = dict(ADDRESS, **({"coupon_code": coupon} if coupon else {}))
         request = APIRequestFactory().post("/api/v1/orders/", data)
@@ -581,6 +582,17 @@ class FreeShippingTest(TestCase):
         order = self._order(self.cara, coupon="DEZ")  # 300 - 10% = 270 < 299
         self.assertEqual(order.shipping, Decimal("25.00"))
         self.assertEqual(order.total, Decimal("295.00"))
+
+    def test_cupom_aplicado_na_sacola_vale_no_pedido(self):
+        # O checkout não reenvia o código: o pedido usa o cupom da sacola,
+        # senão o cliente veria um total e pagaria outro.
+        now = timezone.now()
+        dez = Coupon.objects.create(code="SACOLA10", discount_percentage=Decimal("10"), active=True,
+                                    valid_from=now - timedelta(days=1), valid_to=now + timedelta(days=1))
+        order = self._order(self.barata, cart_coupon=dez)  # 100 - 10% = 90 + 25 de frete
+        self.assertEqual(order.total, Decimal("115.00"))
+        dez.refresh_from_db()
+        self.assertEqual(dez.current_uses, 1)
 
 
 class Sprint4RobustezTest(TestCase):

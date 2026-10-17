@@ -189,7 +189,9 @@ class EfiPixService:
             "calendario": {"expiracao": int(getattr(settings, "EFI_PIX_EXPIRACAO", 3600))},
             "valor": {"original": valor},
             "chave": settings.EFI_PIX_KEY,
-            "solicitacaoPagador": f"Pedido {order.order_number}"[:140],
+            # Texto que o app do banco mostra ao pagador; o nome do recebedor é o do
+            # titular da conta Efí e não dá para mudar por aqui.
+            "solicitacaoPagador": f"{settings.STORE_PIX_LABEL} · Pedido {order.order_number}"[:140],
         }
 
         # Configura os repasses de PIX Split

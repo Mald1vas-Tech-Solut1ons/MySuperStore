@@ -183,7 +183,9 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             selected_shipping = cart.selected_shipping or {}
             shipping = cart.quoted_shipping_total  # frete cotado; o grátis é decidido abaixo, com o desconto deste pedido
 
-            coupon_code = validated_data.pop("coupon_code", None)
+            # Sem código explícito, vale o cupom aplicado na sacola: o total que o
+            # cliente viu já tinha esse desconto e o pedido precisa bater com ele.
+            coupon_code = validated_data.pop("coupon_code", None) or (cart.coupon.code if cart.coupon_id else None)
             discount = 0
             coupon = None
             if coupon_code:
