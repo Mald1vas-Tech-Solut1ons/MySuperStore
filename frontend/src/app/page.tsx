@@ -99,6 +99,15 @@ function Storefront() {
     [params, pathname, router],
   );
 
+  // Fecha o modal e limpa o ?video=1 junto, para a próxima peça não abrir no vídeo.
+  const closeProduct = useCallback(() => {
+    const next = new URLSearchParams(params.toString());
+    next.delete("product");
+    next.delete("video");
+    const qs = next.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [params, pathname, router]);
+
   const lojaName = loja ? stores.find((s) => s.slug === loja)?.store_name ?? allProducts.find((p) => p.seller_slug === loja)?.seller_name : null;
   const gridTitle = lojaName ? `Peças de ${lojaName}` : search ? `Resultados para “${search}”` : category ? usedCategories.find((c) => c.slug === category)?.name ?? "A coleção" : "A coleção";
 
@@ -154,7 +163,9 @@ function Storefront() {
 
       <ChatWidget />
 
-      {productSlug && <ProductModal slug={productSlug} isOpen onClose={() => setParam("product", null)} />}
+      {productSlug && (
+        <ProductModal slug={productSlug} isOpen initialVideo={params.get("video") === "1"} onClose={closeProduct} />
+      )}
     </WallBackdrop>
   );
 }

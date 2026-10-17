@@ -298,6 +298,11 @@ export default function PremiumGlassdoorPage() {
                           -{Math.round(((product.base_price - product.promotional_price) / product.base_price) * 100)}%
                         </div>
                       )}
+                      {product.has_video && (
+                        <div className="absolute top-4 right-4 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm">
+                          <span aria-hidden="true">▶</span> Vídeo
+                        </div>
+                      )}
                     </div>
                     <div className="p-5">
                       <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">{product.category_name}</p>
@@ -344,6 +349,7 @@ export default function PremiumGlassdoorPage() {
             setTimeout(() => setSelectedProduct(null), 300); // Allow exit animation
           }}
           slug={selectedProduct.slug}
+          initialVideo={searchParams.get("video") === "1" && searchParams.get("product") === selectedProduct.slug}
         />
       )}
 

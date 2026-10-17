@@ -80,6 +80,7 @@ export interface Product {
   review_count: number;
   is_available: boolean;
   is_boosted?: boolean;
+  has_video?: boolean;
   approval_status?: string;
   specifications?: Array<{ attribute_name: string; attribute_value: string }>;
   created_at: string;

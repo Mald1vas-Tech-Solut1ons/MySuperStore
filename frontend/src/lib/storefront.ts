@@ -16,6 +16,7 @@ export type StoreProduct = {
   primary_image: string | null;
   avg_rating?: number | null;
   review_count?: number;
+  has_video?: boolean;
 };
 
 export type PublicStore = {
