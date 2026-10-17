@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces, Inter, Sora, Space_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import { brand } from "@/config/brand";
+import { paletteCss, themeColor } from "@/config/palette";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,10 +33,10 @@ const spaceMono = Space_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Ateliê Eli Trassi Macramê — bolsas feitas à mão",
-    template: "%s | Ateliê Eli Trassi",
+    default: brand.meta.title,
+    template: `%s | ${brand.name}`,
   },
-  description: "Bolsas e peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.",
+  description: brand.meta.description,
   manifest: "/manifest.json",
   // Ícones — o apple-touch-icon é obrigatório para o iOS instalar o PWA na tela de início.
   icons: {
@@ -48,31 +50,31 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Ateliê Eli Trassi",
+    title: brand.name,
   },
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "Ateliê Eli Trassi Macramê",
+    siteName: brand.fullName,
     images: [
       {
-        url: "/brand/atelie/caracol-praia.webp",
+        url: brand.images.hero,
         width: 1024,
         height: 1536,
-        alt: "Bolsa Caracol em macramê do Ateliê Eli Trassi",
+        alt: brand.images.ogAlt,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ateliê Eli Trassi Macramê",
-    description: "Bolsas e peças em macramê feitas à mão em Guarulhos-SP.",
-    images: ["/brand/atelie/caracol-praia.webp"],
+    title: brand.fullName,
+    description: brand.meta.shortDescription,
+    images: [brand.images.hero],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F4EDE3",
+  themeColor,
   width: "device-width",
   initialScale: 1,
   // Permite que o app use a área toda em telas com notch quando instalado (standalone).
@@ -85,6 +87,9 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { PWARegistry } from "@/components/PWARegistry";
 import { NotificationOptIn } from "@/components/NotificationOptIn";
 
+// Cores da marca vindas de env (vazio = paleta padrão do globals.css, nada é injetado).
+const brandPalette = paletteCss();
+
 export default function RootLayout({
   children,
 }: {
@@ -92,6 +97,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      {brandPalette ? (
+        <head>
+          <style id="brand-palette" dangerouslySetInnerHTML={{ __html: brandPalette }} />
+        </head>
+      ) : null}
       <body className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${fraunces.variable} ${dmSans.variable} antialiased`}>
         <ThemeProvider
           attribute="class"

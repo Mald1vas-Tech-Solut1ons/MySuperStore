@@ -31,6 +31,14 @@ const nextConfig: NextConfig = {
       { source: '/store/promotions', destination: '/', permanent: false },
       // Vitrine única: a página de cada loja é a home filtrada por ela.
       { source: '/s/:slug', destination: '/?loja=:slug', permanent: false },
+      // Loja própria (NEXT_PUBLIC_STORE_MODE=single): nenhuma rota de marketplace fica acessível.
+      ...(process.env.NEXT_PUBLIC_STORE_MODE === "single"
+        ? ["/vender", "/white-label", "/seller/onboarding", "/seller/onboarding/:path*"].map((source) => ({
+            source,
+            destination: "/",
+            permanent: false,
+          }))
+        : []),
     ];
   },
   async rewrites() {
