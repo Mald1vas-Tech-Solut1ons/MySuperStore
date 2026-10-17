@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Avg, Count, Prefetch, Q
+from django.db.models import Avg, Count, F, Prefetch, Q
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -66,7 +66,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = (
             Product.objects.filter(is_available=True, seller__status="approved")
-            .select_related("seller", "seller__user", "category", "brand")
+            .select_related("seller", "category", "brand")
             .prefetch_related(
                 Prefetch(
                     "images",
@@ -82,6 +82,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 ),
             )
             .annotate(
+                # Só o e-mail do vendedor (usado por is_demo). Não usar select_related("seller__user"):
+                # users_user.avatar_base64 pode ter MB e viria junto em cada produto.
+                seller_email=F("seller__user__email"),
                 avg_rating=Avg("reviews__rating", filter=Q(reviews__status="approved")),
                 review_count=Count("reviews", filter=Q(reviews__status="approved"), distinct=True),
             )
