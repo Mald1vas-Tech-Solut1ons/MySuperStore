@@ -1,3 +1,7 @@
+import os
+import uuid
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -109,10 +113,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_avatar_url(self, obj):
         request = self.context.get("request")
+        if obj.avatar:
+            url = obj.avatar.url
+            return request.build_absolute_uri(url) if request else url
+        # Legado: linhas ainda não migradas (manage.py migrate_avatars) guardam a foto em base64.
         if getattr(obj, "avatar_base64", None):
             return obj.avatar_base64
-        if obj.avatar and request:
-            return request.build_absolute_uri(obj.avatar.url)
         return None
 
     def get_has_store(self, obj):
@@ -138,20 +144,26 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         model = User
         fields = ["first_name", "last_name", "phone", "avatar"]
 
+    def validate_avatar(self, value):
+        # Mesmos tetos das fotos de produto (protegem a API e o armazenamento).
+        if value is None:
+            return value
+        if value.size > settings.PRODUCT_PHOTO_MAX_BYTES:
+            raise serializers.ValidationError("Foto passa de 10 MB. Use uma foto menor.")
+        pil = getattr(value, "image", None)
+        if pil is not None and pil.size[0] * pil.size[1] > settings.PRODUCT_PHOTO_MAX_PIXELS:
+            raise serializers.ValidationError("Foto com resolução alta demais. Use até 40 megapixels.")
+        return value
+
     def update(self, instance, validated_data):
         if "avatar" in validated_data:
-            avatar_file = validated_data.pop("avatar")
+            avatar_file = validated_data["avatar"]
             if avatar_file:
-                import base64
-                avatar_file.seek(0)
-                encoded = base64.b64encode(avatar_file.read()).decode('utf-8')
-                mime_type = getattr(avatar_file, 'content_type', 'image/jpeg')
-                instance.avatar_base64 = f"data:{mime_type};base64,{encoded}"
-            else:
-                instance.avatar_base64 = None
-            # Evita salvar no file system da Railway
-            instance.avatar = None
-            
+                # Nome único: evita colisão no storage e cache antigo de CDN ao trocar a foto.
+                ext = os.path.splitext(avatar_file.name or "")[1].lower()[:6] or ".jpg"
+                avatar_file.name = f"{instance.pk}-{uuid.uuid4().hex[:8]}{ext}"
+            # Qualquer upload novo (ou remoção) encerra o uso do base64 legado.
+            instance.avatar_base64 = None
         return super().update(instance, validated_data)
 
 
