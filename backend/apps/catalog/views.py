@@ -66,7 +66,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = (
             Product.objects.filter(is_available=True, seller__status="approved")
-            .select_related("seller", "category", "brand")
+            .select_related("seller", "seller__user", "category", "brand")
             .prefetch_related(
                 Prefetch(
                     "images",
