@@ -135,6 +135,10 @@ class GeradorDeEnvTest(TestCase):
         front, back, deploy = self.mod.build(self.cfg)
         self.assertEqual(front["NEXT_PUBLIC_STORE_MODE"], "single")
         self.assertEqual(front["NEXT_PUBLIC_BRAND_NAV"], "Canecas=canecas|Pratos=pratos")
+        self.assertEqual(
+            front["NEXT_PUBLIC_BRAND_VIDEO_FILMS"],
+            "/brand/loja/filme-torno.mp4::/brand/loja/filme-torno.webp::Do torno ao forno",
+        )
         self.assertEqual(front["NEXT_PUBLIC_COLOR_PRIMARY"], "2F5D62")  # sem "#": no .env, "#" vira comentário
         self.assertEqual(front["NEXT_PUBLIC_API_URL"], "https://api.loja-teste.example.com/api/v1")
         self.assertNotIn("NEXT_PUBLIC_LEGAL_NAME", front)  # vazio no YAML = usa o padrão
@@ -148,6 +152,11 @@ class GeradorDeEnvTest(TestCase):
     def test_valor_com_cerquilha_vai_entre_aspas_no_frontend(self):
         self.assertEqual(self.mod.env_line("A", "Loja #1", quote=True), "A='Loja #1'\n")
         self.assertEqual(self.mod.env_line("A", "Loja #1", quote=False), "A=Loja #1\n")
+
+    def test_filmes_false_desliga(self):
+        self.cfg["store"]["video"]["films"] = False
+        front, _, _ = self.mod.build(self.cfg)
+        self.assertEqual(front["NEXT_PUBLIC_BRAND_VIDEO_FILMS"], "-")
 
     def test_keep_preserva_segredos(self):
         kept = {"DJANGO_SECRET_KEY": "k", "POSTGRES_PASSWORD": "p", "EFI_WEBHOOK_SECRET": "w"}
