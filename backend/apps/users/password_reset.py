@@ -41,19 +41,20 @@ def send_password_reset_email(user) -> bool:
     first_name = escape((getattr(user, "first_name", "") or "").strip() or "olá")
     hours = settings.PASSWORD_RESET_TIMEOUT // 3600
 
-    subject = "Crie uma nova senha — Ateliê Eli Trassi"
+    store = escape(settings.STORE_NAME)
+    subject = f"Crie uma nova senha — {settings.STORE_NAME}"
     text_body = (
         f"Oi, {first_name}!\n\n"
         "Recebemos um pedido para criar uma nova senha na sua conta.\n"
         f"Use o link abaixo (válido por {hours} horas):\n\n{link}\n\n"
         "Se não foi você, ignore este e-mail: sua senha continua a mesma.\n\n"
-        "Ateliê Eli Trassi Macramê"
+        f"{settings.STORE_FULL_NAME}"
     )
     html_body = f"""<!DOCTYPE html>
 <html lang="pt-BR"><body style="margin:0;background:#F4EDE3;font-family:Georgia,'Times New Roman',serif;color:#1F1A17">
   <div style="max-width:520px;margin:32px auto;background:#ffffff;border-radius:24px;padding:40px 36px;border:1px solid #E8DCCA">
-    <p style="margin:0 0 4px;font-size:22px">Ateliê Eli Trassi</p>
-    <p style="margin:0 0 28px;font-size:11px;letter-spacing:4px;color:#8a7f76;font-family:Arial,sans-serif">MACRAMÊ</p>
+    <p style="margin:0 0 4px;font-size:22px">{store}</p>
+    <p style="margin:0 0 28px;font-size:11px;letter-spacing:4px;color:#8a7f76;font-family:Arial,sans-serif">{escape(settings.STORE_SEGMENT.upper())}</p>
     <p style="font-size:26px;margin:0 0 12px">Crie uma nova senha</p>
     <p style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#4a423c">
       Oi, {first_name}! Recebemos um pedido para criar uma nova senha na sua conta.

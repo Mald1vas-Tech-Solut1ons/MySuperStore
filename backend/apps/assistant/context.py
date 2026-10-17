@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.db.models import Q, Sum
 from django.utils import timezone
 
-KNOWLEDGE = Path(__file__).with_name("knowledge.md")
+DEFAULT_KNOWLEDGE = Path(__file__).with_name("knowledge.md")
 CACHE_SECONDS = 300
 
 
@@ -83,9 +83,10 @@ def system_prompt() -> str:
         for p in catalog_products()
     ) or "- (catálogo vazio no momento: ofereça encomenda sob medida pelo WhatsApp)"
     coupons = "\n".join(_active_coupons()) or "- nenhum cupom ativo agora (não ofereça desconto)"
-    knowledge = KNOWLEDGE.read_text(encoding="utf-8") if KNOWLEDGE.exists() else ""
+    knowledge_file = Path(settings.ASSISTANT_KNOWLEDGE_FILE) if settings.ASSISTANT_KNOWLEDGE_FILE else DEFAULT_KNOWLEDGE
+    knowledge = knowledge_file.read_text(encoding="utf-8") if knowledge_file.exists() else ""
 
-    prompt = f"""Você é a assistente virtual do Ateliê Eli Trassi Macramê, ateliê de peças em macramê feitas à mão na Vila Galvão, Guarulhos-SP, que envia para todo o Brasil. Você atende clientes no site.
+    prompt = f"""Você é a assistente virtual do {settings.STORE_FULL_NAME}, {settings.STORE_ABOUT}. Você atende clientes no site.
 
 COMO RESPONDER
 - Português do Brasil, tom acolhedor, elegante e direto. Respostas curtas: até 5 frases ou uma lista curta.

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Avg, Count, F, Prefetch, Q
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -35,6 +36,13 @@ class SellerApplyView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Loja própria (STORE_MODE=single): não há cadastro público de lojista;
+        # lojas novas só nascem pela equipe (staff/admin ou bootstrap_store).
+        if settings.STORE_MODE == "single" and not (request.user.is_staff or request.user.role == "admin"):
+            return Response(
+                {"detail": "Esta loja não aceita novos vendedores.", "code": "single_store"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         # Gate: só abre loja quem confirmou o e-mail (double opt-in no nível da conta).
         if not getattr(request.user, "email_verified_at", None):
             return Response(
