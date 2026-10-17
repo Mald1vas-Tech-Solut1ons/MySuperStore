@@ -343,7 +343,9 @@ class ProductListSerializer(serializers.ModelSerializer):
         return 0
 
     def get_is_demo(self, obj):
-        seller_email = obj.seller.user.email if getattr(obj, "seller", None) else ""
+        seller_email = getattr(obj, "seller_email", None)
+        if seller_email is None:
+            seller_email = obj.seller.user.email if getattr(obj, "seller", None) else ""
         return seller_email in ["loja@nike.com", "loja@samsung.com"]
 
 
