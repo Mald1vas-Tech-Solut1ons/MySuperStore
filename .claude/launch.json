@@ -18,7 +18,7 @@
     {
       "name": "backend-local",
       "runtimeExecutable": "cmd",
-      "runtimeArgs": ["/c", "set DJANGO_SETTINGS_MODULE=config.settings.dev&& set DJANGO_SECRET_KEY=dev-local-only&& set DATABASE_URL=sqlite:///C:/Users/rafae/.mss-venv/dev.sqlite3&& set CORS_ALLOWED_ORIGINS=http://localhost:3007,http://localhost:3000&& C:\\Users\\rafae\\.mss-venv\\Scripts\\python.exe manage.py runserver 8000"],
+      "runtimeArgs": ["/c", "set DJANGO_SETTINGS_MODULE=config.settings.dev&& set DJANGO_SECRET_KEY=dev-local-only&& set DATABASE_URL=sqlite:///C:/Users/rafae/.mss-venv/dev.sqlite3&& set SHIPPING_MODE=flat&& set CORS_ALLOWED_ORIGINS=http://localhost:3007,http://localhost:3000&& C:\\Users\\rafae\\.mss-venv\\Scripts\\python.exe manage.py runserver 8000"],
       "cwd": "backend",
       "port": 8000
     }

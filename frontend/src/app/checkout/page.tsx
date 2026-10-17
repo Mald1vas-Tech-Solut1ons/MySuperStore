@@ -52,6 +52,40 @@ function CheckoutInner() {
   const [userAddresses, setUserAddresses] = useState<any[]>([]);
 
   const [couponCode, setCouponCode] = useState("");
+
+  const fieldClass = "w-full px-4 py-3 rounded-xl border border-border bg-background focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-medium";
+  const labelClass = "text-xs font-bold text-muted-foreground uppercase tracking-wider pl-1";
+  const setField = (key: keyof typeof addr) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setAddr((a) => ({ ...a, [key]: e.target.value }));
+  const pickAddress = (a: any) => {
+    if (!a) return;
+    setAddr((cur) => ({
+      address_recipient: a.recipient_name || cur.address_recipient,
+      address_cep: a.cep, address_logradouro: a.logradouro, address_numero: a.numero,
+      address_complemento: a.complemento || "", address_bairro: a.bairro,
+      address_cidade: a.cidade, address_uf: a.uf,
+    }));
+  };
+  // CEP completo: preenche rua/bairro/cidade/UF pelo ViaCEP (o cliente confere e ajusta).
+  const onCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+    const masked = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    setAddr((a) => ({ ...a, address_cep: masked }));
+    if (digits.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const d = await r.json();
+      if (d && !d.erro) {
+        setAddr((a) => ({
+          ...a,
+          address_logradouro: a.address_logradouro || d.logradouro || "",
+          address_bairro: a.address_bairro || d.bairro || "",
+          address_cidade: d.localidade || a.address_cidade,
+          address_uf: d.uf || a.address_uf,
+        }));
+      }
+    } catch { /* preenchimento manual */ }
+  };
   const [maxInstallments, setMaxInstallments] = useState(1);
   const [selectedInstallments, setSelectedInstallments] = useState(1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -72,13 +106,13 @@ function CheckoutInner() {
   const [customerCpf, setCustomerCpf] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
 
-  const calculateInstallment = (n: number) => {
-    const total = Number(cart?.total || 0);
-    if (n <= 3) return total / n;
-    const interestRate = 0.0199; // 1.99% a.m
-    const pmt = total * interestRate * Math.pow(1 + interestRate, n) / (Math.pow(1 + interestRate, n) - 1);
-    return pmt;
-  };
+  // Parcelas reais do Efí (valor e juros conforme a conta). Sem resposta, só à vista:
+  // não mostramos parcela que o banco pode cobrar diferente.
+  const [efiInstallments, setEfiInstallments] = useState<{ installment: number; has_interest: boolean; value: number }[]>([]);
+  const installmentOptions = efiInstallments.length
+    ? efiInstallments.filter((i) => i.installment <= maxInstallments)
+    : [{ installment: 1, has_interest: false, value: Math.round(Number(cart?.total || 0) * 100) }];
+  const currentInstallment = installmentOptions.find((i) => i.installment === selectedInstallments) || installmentOptions[0];
 
   useEffect(() => {
     async function loadData() {
@@ -99,6 +133,8 @@ function CheckoutInner() {
 
         const meRes = await authApi.me().catch(() => null);
         if (meRes?.data) setUserEmail(meRes.data.email || "");
+        const fullName = [meRes?.data?.first_name, meRes?.data?.last_name].filter(Boolean).join(" ");
+        if (fullName) setAddr((a) => ({ ...a, address_recipient: a.address_recipient || fullName }));
 
         try {
           const addrRes = await userApi.getAddresses();
@@ -106,17 +142,7 @@ function CheckoutInner() {
           
           if (list.length > 0) {
             setUserAddresses(list);
-            const defaultAddr = list.find((a: any) => a.is_default) || list[0];
-            setAddr({
-              address_recipient: defaultAddr.recipient_name || "Você",
-              address_cep: defaultAddr.cep,
-              address_logradouro: defaultAddr.logradouro,
-              address_numero: defaultAddr.numero,
-              address_complemento: defaultAddr.complemento || "",
-              address_bairro: defaultAddr.bairro,
-              address_cidade: defaultAddr.cidade,
-              address_uf: defaultAddr.uf,
-            });
+            pickAddress(list.find((a: any) => a.is_default) || list[0]);
             setUseCustomAddress(false);
           } else {
             setUseCustomAddress(true);
@@ -138,9 +164,17 @@ function CheckoutInner() {
     const cep = addr.address_cep.replace(/\D/g, "");
     if (cep.length === 8) {
       setQuotingShipping(true);
-      cartApi.shippingQuote(cep).then(res => {
+      cartApi.shippingQuote(cep).then(async res => {
         setShippingQuotes(res.data);
-        setSelectedShipping({});
+        // Loja com uma única opção (ex.: frete fixo) já vem escolhida.
+        const auto: Record<string, any> = {};
+        Object.entries(res.data || {}).forEach(([sid, d]: [string, any]) => {
+          if (!d?.error && (d?.options || []).length === 1) auto[sid] = d.options[0];
+        });
+        setSelectedShipping(auto);
+        if (Object.keys(auto).length) {
+          try { setCart((await cartApi.shippingSelect(auto)).data); } catch (e) { console.error(e); }
+        }
       }).catch(err => {
         console.error("Erro ao cotar frete", err);
       }).finally(() => {
@@ -159,6 +193,31 @@ function CheckoutInner() {
       console.error(err);
     }
   };
+
+  const cardBin = cardNum.replace(/\D/g, "").slice(0, 6);
+  const cartTotalCents = Math.round(Number(cart?.total || 0) * 100);
+  useEffect(() => {
+    const accountId = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
+    if (method !== "credit_card" || !accountId || !cartTotalCents) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const EfiModule = await import("payment-token-efi");
+        const EfiPay = (EfiModule as any).default || EfiModule;
+        const res = await EfiPay.CreditCard
+          .setAccount(accountId)
+          .setEnvironment(process.env.NEXT_PUBLIC_IS_DEBUG === "true" ? "sandbox" : "production")
+          .setBrand(getEfiBrand(cardBin))
+          .setTotal(cartTotalCents)
+          .getInstallments();
+        if (!cancelled && Array.isArray(res?.installments)) setEfiInstallments(res.installments);
+      } catch (e) {
+        console.error("Parcelas Efí indisponíveis", e);
+        if (!cancelled) { setEfiInstallments([]); setSelectedInstallments(1); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [method, cartTotalCents, cardBin.length >= 6 ? cardBin : ""]);
 
   const getEfiBrand = (cardNumber: string) => {
     const pan = cardNumber.replace(/\D/g, "");
@@ -184,38 +243,46 @@ function CheckoutInner() {
       return;
     }
 
+    const missingAddress = ["address_recipient", "address_cep", "address_logradouro", "address_numero", "address_bairro", "address_cidade", "address_uf"]
+      .some((k) => !String((addr as any)[k] || "").trim());
+    if (missingAddress) {
+      setError("Preencha o endereço de entrega completo.");
+      return;
+    }
+
     setProcessing(true);
 
     try {
-      // 1. Create Order
-      const orderPayload = { ...addr };
-      if (couponCode.trim()) (orderPayload as any).coupon_code = couponCode.trim();
-      const orderRes = await ordersApi.create(orderPayload);
-      const order = orderRes.data;
-
-      // 2. Tokenize (if Card)
+      // 1. Cartão: valida e tokeniza ANTES de criar o pedido. Criar o pedido reserva
+      // o estoque (peça única), então um erro de digitação não pode prender a peça.
       let paymentToken = "";
       if (method === "credit_card" || method === "debit_card") {
         if (!cardNum || !cardExp || !cardCvv || !cardName || !customerCpf) {
           throw new Error("Preencha todos os campos do cartão e titular.");
         }
-        
+
         const [month, yearRaw] = cardExp.split("/");
         const year = yearRaw?.length === 2 ? `20${yearRaw}` : yearRaw;
 
         const accountId = process.env.NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER;
-        if (!accountId) throw new Error("Identificador de Conta do Efí não configurado (NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER)");
+        if (!accountId) throw new Error("Pagamento com cartão indisponível no momento. Use o Pix.");
 
         // payment-token-efi v3.x usa o builder EfiPay.CreditCard.setAccount()...
         const EfiModule = await import("payment-token-efi");
         const EfiPay = (EfiModule as any).default || EfiModule;
+
+        const pan = cardNum.replace(/\D/g, "");
+        let brand = getEfiBrand(pan);
+        try {
+          brand = (await EfiPay.CreditCard.setCardNumber(pan).verifyCardBrand()) || brand;
+        } catch { /* fica a detecção local */ }
 
         try {
           const result = await EfiPay.CreditCard
             .setAccount(accountId)
             .setEnvironment(process.env.NEXT_PUBLIC_IS_DEBUG === 'true' ? 'sandbox' : 'production')
             .setCreditCardData({
-              brand: getEfiBrand(cardNum),
+              brand,
               number: cardNum.replace(/\D/g, ""),
               cvv: cardCvv.replace(/\D/g, ""),
               expirationMonth: month,
@@ -232,6 +299,12 @@ function CheckoutInner() {
         }
       }
 
+      // 2. Cria o pedido (o cupom aplicado na sacola é usado pelo servidor)
+      const orderPayload = { ...addr, address_cep: addr.address_cep.replace(/\D/g, "") };
+      if (couponCode.trim()) (orderPayload as any).coupon_code = couponCode.trim();
+      const orderRes = await ordersApi.create(orderPayload);
+      const order = orderRes.data;
+
       // 3. Process Payment
       const processPayload: any = {
         order_id: order.id,
@@ -240,7 +313,7 @@ function CheckoutInner() {
 
       if (method === "credit_card" || method === "debit_card") {
         processPayload.payment_token = paymentToken;
-        processPayload.installments = selectedInstallments;
+        processPayload.installments = currentInstallment.installment;
         processPayload.customer = {
           name: cardName,
           cpf: customerCpf.replace(/\D/g, ""),
@@ -416,13 +489,72 @@ function CheckoutInner() {
                   <MapPin className="h-6 w-6 text-primary" /> Endereço de Entrega
                 </h3>
               </div>
-              {/* Simplificado para manter o layout original. (Reinsira o Address Modal logicamente parecido) */}
-              <div className="bg-white/5 border border-primary/20 rounded-2xl p-5">
-                 <p className="font-bold text-base">{addr.address_recipient || "Destinatário"}</p>
-                 <p className="text-sm text-muted-foreground mt-0.5">
-                   {addr.address_logradouro}, {addr.address_numero} - CEP {addr.address_cep}
-                 </p>
-              </div>
+              {!useCustomAddress ? (
+                <div className="space-y-3">
+                  {userAddresses.length > 1 && (
+                    <select
+                      aria-label="Endereço salvo"
+                      className={fieldClass}
+                      onChange={(e) => pickAddress(userAddresses.find((x: any) => String(x.id) === e.target.value))}
+                    >
+                      {userAddresses.map((a: any) => (
+                        <option key={a.id} value={a.id}>{a.logradouro}, {a.numero} · CEP {a.cep}</option>
+                      ))}
+                    </select>
+                  )}
+                  <div className="border border-primary/20 rounded-2xl p-5">
+                    <p className="font-bold text-base">{addr.address_recipient}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {addr.address_logradouro}, {addr.address_numero}{addr.address_complemento ? ` · ${addr.address_complemento}` : ""} · {addr.address_bairro}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{addr.address_cidade}/{addr.address_uf} · CEP {addr.address_cep}</p>
+                  </div>
+                  <button type="button" onClick={() => setUseCustomAddress(true)} className="text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                    Entregar em outro endereço
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-6 gap-3">
+                  <label className="col-span-6 space-y-1">
+                    <span className={labelClass}>Quem recebe</span>
+                    <input className={fieldClass} value={addr.address_recipient} onChange={setField("address_recipient")} autoComplete="name" required />
+                  </label>
+                  <label className="col-span-6 sm:col-span-2 space-y-1">
+                    <span className={labelClass}>CEP</span>
+                    <input className={fieldClass} value={addr.address_cep} onChange={onCepChange} inputMode="numeric" maxLength={9} placeholder="00000-000" autoComplete="postal-code" required />
+                  </label>
+                  <label className="col-span-6 sm:col-span-4 space-y-1">
+                    <span className={labelClass}>Rua</span>
+                    <input className={fieldClass} value={addr.address_logradouro} onChange={setField("address_logradouro")} autoComplete="address-line1" required />
+                  </label>
+                  <label className="col-span-2 space-y-1">
+                    <span className={labelClass}>Número</span>
+                    <input className={fieldClass} value={addr.address_numero} onChange={setField("address_numero")} required />
+                  </label>
+                  <label className="col-span-4 space-y-1">
+                    <span className={labelClass}>Complemento</span>
+                    <input className={fieldClass} value={addr.address_complemento} onChange={setField("address_complemento")} placeholder="Opcional" autoComplete="address-line2" />
+                  </label>
+                  <label className="col-span-6 sm:col-span-3 space-y-1">
+                    <span className={labelClass}>Bairro</span>
+                    <input className={fieldClass} value={addr.address_bairro} onChange={setField("address_bairro")} required />
+                  </label>
+                  <label className="col-span-4 sm:col-span-2 space-y-1">
+                    <span className={labelClass}>Cidade</span>
+                    <input className={fieldClass} value={addr.address_cidade} onChange={setField("address_cidade")} autoComplete="address-level2" required />
+                  </label>
+                  <label className="col-span-2 sm:col-span-1 space-y-1">
+                    <span className={labelClass}>UF</span>
+                    <input className={fieldClass} value={addr.address_uf} onChange={(e) => setAddr((a) => ({ ...a, address_uf: e.target.value.toUpperCase().slice(0, 2) }))} maxLength={2} required />
+                  </label>
+                  {userAddresses.length > 0 && (
+                    <button type="button" onClick={() => { setUseCustomAddress(false); pickAddress(userAddresses.find((a: any) => a.is_default) || userAddresses[0]); }}
+                      className="col-span-6 text-left text-sm font-semibold text-primary underline-offset-4 hover:underline">
+                      Usar endereço salvo
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* Frete e Entrega */}
@@ -553,11 +685,11 @@ function CheckoutInner() {
                           className="w-full p-4 rounded-2xl border border-border bg-background outline-none focus-within:border-primary transition-all cursor-pointer flex justify-between items-center"
                         >
                           <span>
-                            {selectedInstallments}x de R$ {brl(calculateInstallment(selectedInstallments))}{" "}
-                            {selectedInstallments <= 3 ? (
-                              <span className="text-green-500 font-bold ml-1">sem juros</span>
+                            {currentInstallment.installment}x de R$ {brl(currentInstallment.value / 100)}{" "}
+                            {currentInstallment.has_interest ? (
+                              <span className="text-muted-foreground ml-1">com juros · total R$ {brl((currentInstallment.value * currentInstallment.installment) / 100)}</span>
                             ) : (
-                              <span className="text-muted-foreground ml-1">com juros</span>
+                              <span className="text-green-600 font-bold ml-1">sem juros</span>
                             )}
                           </span>
                           <span className="text-muted-foreground">▼</span>
@@ -568,17 +700,17 @@ function CheckoutInner() {
                               initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                               className="absolute z-50 w-full mt-2 bg-background border border-border rounded-2xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar"
                             >
-                              {Array.from({ length: maxInstallments }, (_, i) => i + 1).map(n => {
-                                const val = calculateInstallment(n);
-                                return (
-                                  <div 
-                                    key={n} onClick={() => { setSelectedInstallments(n); setIsDropdownOpen(false); }}
-                                    className={`p-4 hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-border/40 last:border-0 ${selectedInstallments === n ? 'bg-primary/10' : ''}`}
-                                  >
-                                    <span>{n}x de R$ {brl(val)}</span>
-                                  </div>
-                                );
-                              })}
+                              {installmentOptions.map(opt => (
+                                <div
+                                  key={opt.installment} onClick={() => { setSelectedInstallments(opt.installment); setIsDropdownOpen(false); }}
+                                  className={`p-4 hover:bg-black/5 cursor-pointer flex justify-between items-center border-b border-border/40 last:border-0 ${currentInstallment.installment === opt.installment ? 'bg-primary/10' : ''}`}
+                                >
+                                  <span>{opt.installment}x de R$ {brl(opt.value / 100)}</span>
+                                  <span className={`text-xs ${opt.has_interest ? "text-muted-foreground" : "text-green-600 font-bold"}`}>
+                                    {opt.has_interest ? `total R$ ${brl((opt.value * opt.installment) / 100)}` : "sem juros"}
+                                  </span>
+                                </div>
+                              ))}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -596,7 +728,7 @@ function CheckoutInner() {
                     <QrCode className="h-8 w-8 text-primary shrink-0" />
                     <div>
                       <p className="font-bold text-lg mb-1">Aprovação Imediata</p>
-                      <p className="text-sm text-muted-foreground">Ao clicar em finalizar compra, geraremos um QR Code exclusivo para o seu pedido. Você terá 15 minutos para pagar e garantir o desconto!</p>
+                      <p className="text-sm text-muted-foreground">Ao finalizar, geramos um QR Code exclusivo do seu pedido. Assim que você paga, a confirmação chega aqui automaticamente.</p>
                     </div>
                   </motion.div>
                 )}
@@ -641,10 +773,12 @@ function CheckoutInner() {
                   <span className="font-bold text-lg">Total</span>
                   <div className="text-right">
                     <span className="font-display font-black text-4xl text-primary block leading-none">
-                      R$ {brl(method === "pix" ? Number(cart?.total || 0) * 0.95 : Number(cart?.total || 0))}
+                      R$ {brl(Number(cart?.total || 0))}
                     </span>
-                    {method === "pix" && (
-                      <span className="text-xs text-emerald-500 font-bold mt-1 block">✨ Economia de R$ {brl(Number(cart?.total || 0) * 0.05)} no PIX!</span>
+                    {method === "credit_card" && currentInstallment.has_interest && (
+                      <span className="text-xs text-muted-foreground mt-1 block">
+                        No cartão em {currentInstallment.installment}x: R$ {brl((currentInstallment.value * currentInstallment.installment) / 100)} com juros
+                      </span>
                     )}
                   </div>
                 </div>
