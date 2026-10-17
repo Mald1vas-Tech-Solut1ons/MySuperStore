@@ -160,7 +160,7 @@ export const brand: Brand = {
   },
   credit: {
     label: str(process.env.NEXT_PUBLIC_CREDIT_LABEL, "Feito por Maldivas Tech"),
-    url: str(process.env.NEXT_PUBLIC_CREDIT_URL, ""),
+    url: str(process.env.NEXT_PUBLIC_CREDIT_URL, "https://maldivastech.dev"),
   },
 };
 

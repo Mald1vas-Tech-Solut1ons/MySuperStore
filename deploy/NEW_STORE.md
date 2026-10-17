@@ -134,7 +134,7 @@ recebendo direto na conta Efí da instalação, em destaque na home, sem comiss�
 - [ ] `https://<API_DOMAIN>/api/health/` responde OK.
 - [ ] Home com nome, cores, fotos e textos do cliente; nenhum texto do Ateliê sobrando.
 - [ ] Modo `single`: sem "Venda seu artesanato", sem "Ateliês parceiros"; `/vender`, `/white-label` e
-      `/seller/onboarding` voltam para `/`; rodapé mostra "Feito por Maldivas Tech".
+      `/seller/onboarding` voltam para `/`; rodapé mostra "Feito por Maldivas Tech" com link para https://maldivastech.dev.
 - [ ] Rodapé legal com razão social, CPF/CNPJ, endereço e e-mail (`store.legal`).
 - [ ] Dona criou a senha por "Esqueci minha senha" e entrou no painel.
 - [ ] Peças reais cadastradas com fotos; frete calculado no carrinho.
