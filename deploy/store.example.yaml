@@ -68,7 +68,7 @@ store:
     document: ""                   # CPF ou CNPJ
     address: ""
     email: ""
-  credit_url: ""                   # site comercial da Maldivas Tech (rodapé "Feito por")
+  credit_url: ""                   # link do "Feito por Maldivas Tech" (padrão: https://maldivastech.dev; "-" tira o link)
 
 domains:
   frontend: https://loja-teste.vercel.app

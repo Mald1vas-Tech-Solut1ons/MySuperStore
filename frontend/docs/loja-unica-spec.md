@@ -93,7 +93,7 @@ Campos (env → padrão atual). `${name}` etc. indicam que o padrão é derivado
 | `legal.address` | `NEXT_PUBLIC_LEGAL_ADDRESS` | `""` |
 | `legal.email` | `NEXT_PUBLIC_LEGAL_EMAIL` | `""` |
 | `credit.label` | `NEXT_PUBLIC_CREDIT_LABEL` | `Feito por Maldivas Tech` |
-| `credit.url` | `NEXT_PUBLIC_CREDIT_URL` | `""` |
+| `credit.url` | `NEXT_PUBLIC_CREDIT_URL` | `https://maldivastech.dev` |
 
 Também exportar:
 
