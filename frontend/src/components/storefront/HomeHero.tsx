@@ -40,15 +40,15 @@ export function HomeHero({ products, onOpen }: { products: StoreProduct[]; onOpe
       >
         <motion.p variants={item} className="flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-white/85">
           <span aria-hidden className="h-px w-8 bg-white/70" />
-          Ateliê · {brand.location}
+          {brand.hero.eyebrow}
         </motion.p>
         <motion.h1 variants={item} className="mt-4 font-serif text-5xl leading-[0.95] text-white sm:text-7xl lg:text-8xl">
-          Feito à mão,
+          {brand.hero.title}
           <br />
-          <em className="text-atelie-terracotta">nó a nó.</em>
+          <em className="text-atelie-terracotta">{brand.hero.titleEmphasis}</em>
         </motion.h1>
         <motion.p variants={item} className="mt-5 max-w-xl text-lg text-white/85">
-          Bolsas e peças em macramê criadas uma a uma no ateliê. {brand.shipping}.
+          {brand.hero.subtitle}
         </motion.p>
 
         <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

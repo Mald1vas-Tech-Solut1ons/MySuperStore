@@ -14,6 +14,8 @@ import { AtelierVideo } from "@/components/storefront/AtelierVideo";
 import { CustomOrder } from "@/components/storefront/CustomOrder";
 import { StoresStrip } from "@/components/storefront/StoresStrip";
 import { ChatWidget } from "@/components/storefront/ChatWidget";
+import { brand } from "@/config/brand";
+import { isSingleStore } from "@/config/storeMode";
 import {
   type PublicStore,
   type StoreCategory,
@@ -107,7 +109,7 @@ function Storefront() {
       <main>
         {!browsing && <HomeHero products={products} onOpen={(slug) => setParam("product", slug)} />}
         {!browsing && (
-          <Marquee items={["feito à mão", "nó a nó", "fio de algodão", "sob medida", "de Guarulhos para todo o Brasil", "peças únicas"]} />
+          <Marquee items={brand.marquee} />
         )}
 
         <div className={browsing ? "pt-6" : ""}>
@@ -133,16 +135,17 @@ function Storefront() {
                 </div>
               ) : undefined
             }
-            subtitle={browsing ? undefined : "Cada peça é feita à mão, uma a uma. Quando acaba, a próxima pode sair diferente — e esse é o charme."}
+            subtitle={browsing ? undefined : brand.collectionSubtitle}
           />
         </div>
 
         {!browsing && (
           <>
             <AtelierVideo videoUrl={featured?.video_url} fileUrl={featured?.presentation_video_url} />
-            <CustomOrder />
+            {brand.customOrder.enabled && <CustomOrder />}
             <TrustBar />
-            <StoresStrip stores={stores} />
+            {/* Loja própria: sem vitrine de outros ateliês. */}
+            {!isSingleStore && <StoresStrip stores={stores} />}
           </>
         )}
       </main>

@@ -73,16 +73,17 @@ const config: Config = {
         success: { DEFAULT: "#16a34a", light: "#dcfce7" },
         warning: { DEFAULT: "#d97706", light: "#fef3c7" },
         error: { DEFAULT: "#dc2626", light: "#fee2e2" },
-        // Ateliê (vitrine artesanal): tons de parede de cal, argila e café.
+        // Vitrine da loja: CSS vars em canais RGB (padrão do Ateliê em globals.css,
+        // sobrescritas por NEXT_PUBLIC_COLOR_* via src/config/palette.ts).
         atelie: {
-          cream: "#F4EDE3",
-          sand: "#E8DCCA",
-          wall: "#EFE6D8",
-          clay: "#A65A3A",
-          terracotta: "#C47A55",
-          olive: "#5B6146",
-          espresso: "#2A211B",
-          ink: "#1F1A17",
+          cream: "rgb(var(--brand-cream) / <alpha-value>)",
+          sand: "rgb(var(--brand-sand) / <alpha-value>)",
+          wall: "rgb(var(--brand-wall) / <alpha-value>)",
+          clay: "rgb(var(--brand-clay) / <alpha-value>)",
+          terracotta: "rgb(var(--brand-terracotta) / <alpha-value>)",
+          olive: "rgb(var(--brand-olive) / <alpha-value>)",
+          espresso: "rgb(var(--brand-espresso) / <alpha-value>)",
+          ink: "rgb(var(--brand-ink) / <alpha-value>)",
         },
         // Paleta da marca Saturno (ouro premium)
         saturn: {

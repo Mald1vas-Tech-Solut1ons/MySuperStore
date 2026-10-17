@@ -243,6 +243,21 @@ DEFAULT_FROM_EMAIL = env("MAIL_DEFAULT_SENDER", default=EMAIL_HOST_USER)
 MEILI_HOST = env("MEILI_HOST", default="http://localhost:7700")
 EFI_WEBHOOK_SECRET = env("EFI_WEBHOOK_SECRET", default="")
 
+# ── Loja (uma instalação por cliente) ─────────────────────────────────────────
+# "single" = loja própria: ninguém abre loja pelo site (só staff/admin);
+# "marketplace" = comportamento atual, com candidatura pública de lojistas.
+STORE_MODE = env("STORE_MODE", default="marketplace")
+# Marca usada no chat IA e nos e-mails. Padrão: Ateliê Eli Trassi.
+STORE_NAME = env("STORE_NAME", default="Ateliê Eli Trassi")
+STORE_FULL_NAME = env("STORE_FULL_NAME", default="Ateliê Eli Trassi Macramê")
+STORE_SEGMENT = env("STORE_SEGMENT", default="macramê")
+STORE_ABOUT = env(
+    "STORE_ABOUT",
+    default="ateliê de peças em macramê feitas à mão na Vila Galvão, Guarulhos-SP, que envia para todo o Brasil",
+)
+# Base de conhecimento do chat (texto factual da loja). Vazio = a do Ateliê.
+ASSISTANT_KNOWLEDGE_FILE = env("ASSISTANT_KNOWLEDGE_FILE", default="")
+
 # Assistente de atendimento (Gemini) — chave só no servidor; modelos em ordem de fallback.
 GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
 GEMINI_MODELS = env.list("GEMINI_MODELS", default=["gemini-flash-latest", "gemini-3.5-flash", "gemini-flash-lite-latest"])

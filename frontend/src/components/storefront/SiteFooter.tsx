@@ -1,15 +1,10 @@
 "use client";
 
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { Instagram, MessageCircle, ArrowUpRight } from "lucide-react";
-import { brand, whatsappLink } from "@/config/brand";
-
-const shopLinks = [
-  { label: "Bolsas", href: "/?category=bolsas" },
-  { label: "Chapéus", href: "/?category=chapeus" },
-  { label: "Calçados", href: "/?category=calcados" },
-  { label: "Casa", href: "/?category=casa" },
-];
+import { brand, whatsappLink, legalDocumentLabel, hasLegalInfo } from "@/config/brand";
+import { isSingleStore } from "@/config/storeMode";
 
 const helpLinks = [
   { label: "Trocas e devoluções", href: "/terms" },
@@ -23,6 +18,19 @@ export function SiteFooter() {
   const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atelie-clay rounded-sm";
   const headingClass = "text-[11px] uppercase tracking-[0.3em] text-atelie-cream/50 font-atelie";
   const linkClass = `text-atelie-cream/75 hover:text-atelie-cream transition-colors ${focusRing}`;
+  const creditClass = `text-atelie-cream/50 hover:text-atelie-cream/80 transition-colors ${focusRing}`;
+
+  // Rodapé legal (Decreto 7.962/2013): só os campos preenchidos, separados por " · ".
+  const legalParts: ReactNode[] = [
+    brand.legal.name,
+    legalDocumentLabel(brand.legal.document),
+    brand.legal.address,
+    brand.legal.email ? (
+      <a href={`mailto:${brand.legal.email}`} className={linkClass}>
+        {brand.legal.email}
+      </a>
+    ) : "",
+  ].filter(Boolean);
 
   return (
     <footer className="bg-atelie-espresso text-atelie-cream/80">
@@ -38,7 +46,7 @@ export function SiteFooter() {
           <nav aria-label="Comprar" className="font-atelie">
             <p className={headingClass}>Comprar</p>
             <ul className="mt-4 space-y-2.5 text-sm">
-              {shopLinks.map((item) => (
+              {brand.nav.map((item) => (
                 <li key={item.label}>
                   <Link href={item.href} className={linkClass}>{item.label}</Link>
                 </li>
@@ -84,11 +92,30 @@ export function SiteFooter() {
           </div>
         </div>
 
+        {hasLegalInfo && (
+          <address className="not-italic mt-10 font-atelie text-xs leading-relaxed text-atelie-cream/55">
+            {legalParts.map((part, i) => (
+              <Fragment key={i}>
+                {i > 0 && " · "}
+                {part}
+              </Fragment>
+            ))}
+          </address>
+        )}
+
         <div className="mt-12 border-t border-white/10 pt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between font-atelie text-xs text-atelie-cream/60">
           <p>© {year} {brand.fullName}</p>
-          <Link href="/white-label" className={`text-atelie-cream/50 hover:text-atelie-cream/80 transition-colors ${focusRing}`}>
-            Plataforma MySuperStore
-          </Link>
+          {!isSingleStore ? (
+            <Link href="/white-label" className={creditClass}>
+              Plataforma MySuperStore
+            </Link>
+          ) : brand.credit.url ? (
+            <a href={brand.credit.url} target="_blank" rel="noopener noreferrer" className={creditClass}>
+              {brand.credit.label}
+            </a>
+          ) : (
+            <span className="text-atelie-cream/50">{brand.credit.label}</span>
+          )}
         </div>
       </div>
     </footer>

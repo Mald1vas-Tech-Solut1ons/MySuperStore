@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Heart, Menu, Search, ShoppingBag, User, X } from "lucide-react";
 import { brand, whatsappLink } from "@/config/brand";
+import { isSingleStore } from "@/config/storeMode";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
 
@@ -13,11 +14,8 @@ const custom = () => whatsappLink("Olá! Quero encomendar uma peça sob medida."
 
 const mainLinks = () => [
   { label: "Início", href: "/" },
-  { label: "Bolsas", href: "/?category=bolsas" },
-  { label: "Chapéus", href: "/?category=chapeus" },
-  { label: "Calçados", href: "/?category=calcados" },
-  { label: "Casa", href: "/?category=casa" },
-  { label: "Sob medida", href: custom() },
+  ...brand.nav,
+  ...(brand.customOrder.enabled ? [{ label: "Sob medida", href: custom() }] : []),
 ];
 
 const focus = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-atelie-clay rounded-full";
@@ -76,7 +74,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
       <header className="sticky top-0 z-50 font-atelie">
         <div className="bg-atelie-espresso text-atelie-cream text-[12px]">
           <div className="mx-auto flex h-8 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <span className="truncate">Frete grátis acima de R$ 299 · {brand.shipping}</span>
+            <span className="truncate">{[brand.announcement, brand.shipping].filter(Boolean).join(" · ")}</span>
             <span className="hidden sm:block text-atelie-cream/75">{brand.location}</span>
           </div>
         </div>
@@ -100,7 +98,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
 
             <Link href="/" onClick={() => setMenuOpen(false)} className={`justify-self-center text-center leading-none ${focus}`} aria-label={`${brand.fullName} — início`}>
               <span className="block whitespace-nowrap font-serif text-lg sm:text-2xl">{brand.name}</span>
-              <span className="mt-1 block text-[9px] sm:text-[10px] uppercase tracking-[0.35em] opacity-75">macramê</span>
+              <span className="mt-1 block text-[9px] sm:text-[10px] uppercase tracking-[0.35em] opacity-75">{brand.segment}</span>
             </Link>
 
             <div className="justify-self-end flex items-center">
@@ -169,9 +167,9 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
                 <Link href="/wishlist" onClick={() => setMenuOpen(false)} className="block hover:text-atelie-clay">Favoritos</Link>
                 {user?.is_seller ? (
                   <Link href="/seller/dashboard" onClick={() => setMenuOpen(false)} className="block hover:text-atelie-clay">Painel da loja</Link>
-                ) : (
+                ) : !isSingleStore ? (
                   <Link href="/seller/onboarding" onClick={() => setMenuOpen(false)} className="block hover:text-atelie-clay">Venda seu artesanato</Link>
-                )}
+                ) : null}
                 {user?.role === "admin" && (
                   <Link href="/admin" onClick={() => setMenuOpen(false)} className="block hover:text-atelie-clay">Administração</Link>
                 )}
@@ -214,8 +212,8 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Busque bolsas, chapéus, peças…"
-                  aria-label="Buscar no ateliê"
+                  placeholder={brand.search.placeholder}
+                  aria-label={`Buscar no ${brand.shopNoun}`}
                   className="min-w-0 flex-1 bg-transparent font-serif text-2xl sm:text-4xl text-atelie-ink outline-none placeholder:text-atelie-ink/30"
                 />
                 <button type="button" onClick={() => setSearchOpen(false)} aria-label="Fechar busca" className={iconBtn}>
@@ -223,7 +221,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
                 </button>
               </div>
               <div className="mx-auto mt-4 flex max-w-4xl flex-wrap gap-2 text-sm">
-                {["bolsa caracol", "boho", "chapéu", "sob medida"].map((t) => (
+                {brand.search.suggestions.map((t) => (
                   <button key={t} type="button" onClick={() => submitSearch(t)} className={`rounded-full px-3 py-1 ring-1 ring-black/15 hover:bg-black/5 ${focus}`}>
                     {t}
                   </button>
