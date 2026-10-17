@@ -264,6 +264,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     is_demo = serializers.SerializerMethodField()
     is_boosted = serializers.BooleanField(read_only=True)
     carts_count = serializers.IntegerField(read_only=True, default=0)
+    has_video = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -277,7 +278,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             "avg_rating", "review_count",
             "is_available", "views_count", "clicks_count", "created_at",
             "variants", "is_free_shipping", "estimated_delivery_days",
-            "weight", "length", "width", "height", "is_demo", "carts_count", "is_boosted"
+            "weight", "length", "width", "height", "is_demo", "carts_count", "is_boosted",
+            "has_video",
         ]
 
     def get_primary_image(self, obj):
@@ -316,6 +318,10 @@ class ProductListSerializer(serializers.ModelSerializer):
             secs = delta.total_seconds()
             return int(secs) if secs > 0 else 0
         return 0
+
+    def get_has_video(self, obj):
+        # Só um bool na vitrine: a URL do vídeo continua apenas no detalhe.
+        return bool(getattr(obj, "video_external", None) or obj.video)
 
     def get_is_demo(self, obj):
         seller_email = obj.seller.user.email if getattr(obj, "seller", None) else ""

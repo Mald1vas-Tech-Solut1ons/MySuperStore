@@ -16,9 +16,11 @@ interface ProductModalProps {
   slug: string;
   isOpen: boolean;
   onClose: () => void;
+  /** Abre já no vídeo da peça (link com ?video=1), se ela tiver vídeo. */
+  initialVideo?: boolean;
 }
 
-export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
+export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: ProductModalProps) {
   const [activeSlug, setActiveSlug] = useState(slug);
   const [product, setProduct] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
       .then((res) => {
         const prod = res.data;
         setProduct(prod);
-        setShowVideo(false);
+        setShowVideo(Boolean(initialVideo && activeSlug === slug && prod.video_url));
         if (prod.images && prod.images.length > 0) {
           const primary = prod.images.find((img: any) => img.is_primary) || prod.images[0];
           setSelectedImage(primary.image);
@@ -129,6 +131,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
     return () => {
       document.body.style.overflow = 'unset';
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialVideo/slug só valem na abertura
   }, [activeSlug, isOpen]);
 
   const handleAddToCart = async () => {
@@ -238,6 +241,15 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                       Sem imagem principal
                     </div>
                   )}
+                  {product.video_url && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowVideo(true); setIsZooming(false); setZoomStyle({}); }}
+                      className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white shadow backdrop-blur-md hover:bg-black/85 transition-colors"
+                    >
+                      <Play className="h-3.5 w-3.5" fill="currentColor" aria-hidden /> Ver vídeo
+                    </button>
+                  )}
                   {!isZooming && (
                     <div className="absolute bottom-3 left-0 right-0 hidden md:flex justify-center opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none">
                       <span className="bg-black/5 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-md">
@@ -251,17 +263,6 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                 {/* Thumbnails (fotos + vídeo, se houver) */}
                 {((product.images?.length ?? 0) > 1 || product.video_url) && (
                   <div className="shrink-0 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {product.images.map((img: any) => (
-                      <button
-                        key={img.id}
-                        onClick={() => { setSelectedImage(img.image); setShowVideo(false); }}
-                        className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
-                          !showVideo && selectedImage === img.image ? "border-primary" : "border-transparent hover:border-primary/50"
-                        }`}
-                      >
-                        <img src={img.image} alt="Thumbnail" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
                     {product.video_url && (
                       <button
                         type="button"
@@ -281,6 +282,17 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                         <span className="absolute inset-x-0 bottom-0 bg-black/60 text-[9px] md:text-[10px] text-white text-center py-0.5">Vídeo</span>
                       </button>
                     )}
+                    {product.images.map((img: any) => (
+                      <button
+                        key={img.id}
+                        onClick={() => { setSelectedImage(img.image); setShowVideo(false); }}
+                        className={`relative w-14 h-14 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                          !showVideo && selectedImage === img.image ? "border-primary" : "border-transparent hover:border-primary/50"
+                        }`}
+                      >
+                        <img src={img.image} alt="Thumbnail" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -353,7 +365,7 @@ export function ProductModal({ slug, isOpen, onClose }: ProductModalProps) {
                       </button>
                       <button
                         onClick={async () => {
-                          const url = `${window.location.origin}/s/${product.seller_slug}?product=${product.slug}`;
+                          const url = `${window.location.origin}/s/${product.seller_slug}?product=${product.slug}${showVideo ? "&video=1" : ""}`;
                           try {
                             if (navigator.clipboard && window.isSecureContext) {
                               await navigator.clipboard.writeText(url);

@@ -27,7 +27,7 @@ export function ProductCard({ product, onOpen, index = 0 }: ProductCardProps) {
       <button
         type="button"
         onClick={() => onOpen(product.slug)}
-        aria-label={`Ver ${product.name}`}
+        aria-label={`Ver ${product.name}${product.has_video ? " (tem vídeo)" : ""}`}
         className="group block w-full rounded-3xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-atelie-clay focus-visible:ring-offset-2 focus-visible:ring-offset-atelie-cream"
       >
         <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-atelie-sand">
@@ -45,6 +45,12 @@ export function ProductCard({ product, onOpen, index = 0 }: ProductCardProps) {
           {discount !== null && (
             <span className="absolute left-3 top-3 rounded-full bg-atelie-cream/95 px-2.5 py-1 text-[11px] font-medium text-atelie-clay">
               -{discount}%
+            </span>
+          )}
+
+          {product.has_video && (
+            <span className="absolute right-3 top-3 rounded-full bg-atelie-ink/75 px-2.5 py-1 text-[11px] font-medium text-atelie-cream backdrop-blur-sm">
+              <span aria-hidden="true">▶</span> Vídeo
             </span>
           )}
 
