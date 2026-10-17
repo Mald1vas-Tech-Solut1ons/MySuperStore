@@ -1,0 +1,100 @@
+# Publica o backend na VM Oracle a cada push na master que mexa no backend ou
+# no deploy. Reaproveita deploy/oracle/deploy.sh (o mesmo do deploy manual).
+# Secrets e rollback: DEPLOY.md, seção "Deploy automático (GitHub Actions)".
+name: Deploy backend (Oracle)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/**"
+      - "deploy/oracle/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run só confere SSH, releases e saúde; deploy publica o commit escolhido"
+        type: choice
+        options: [dry-run, deploy]
+        default: dry-run
+
+permissions:
+  contents: read
+
+# Um deploy por vez na VM; o que está rodando nunca é cancelado
+concurrency:
+  group: deploy-backend-oracle
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://mysuperstore-api.144.22.151.18.sslip.io/api/health/
+    env:
+      MODE: ${{ github.event_name == 'push' && 'deploy' || inputs.mode }}
+      ORACLE_HOST: ${{ vars.ORACLE_HOST }}
+      # Repo público: logs da app não vão para o log do Actions
+      PRINT_REMOTE_LOGS: "0"
+    steps:
+      - name: Deploy só a partir da master
+        if: env.MODE == 'deploy' && github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::deploy só a partir da master; em outras branches use dry-run"
+          exit 1
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Configurar SSH
+        env:
+          ORACLE_SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+        run: |
+          [ -n "$ORACLE_HOST" ] || { echo "::error::variável ORACLE_HOST não cadastrada"; exit 1; }
+          [ -n "$ORACLE_SSH_KEY" ] || { echo "::error::secret ORACLE_SSH_KEY não cadastrado"; exit 1; }
+          [ -n "$ORACLE_KNOWN_HOSTS" ] || { echo "::error::secret ORACLE_KNOWN_HOSTS não cadastrado"; exit 1; }
+          # Fora do workspace; o último passo apaga mesmo que o job falhe
+          ssh_dir="$RUNNER_TEMP/oracle-ssh"
+          install -d -m 700 "$ssh_dir"
+          umask 077
+          printf '%s\n' "$ORACLE_SSH_KEY" | tr -d '\r' > "$ssh_dir/key"
+          printf '%s\n' "$ORACLE_KNOWN_HOSTS" | tr -d '\r' > "$ssh_dir/known_hosts"
+          ssh-keygen -y -P '' -f "$ssh_dir/key" >/dev/null 2>&1 \
+            || { echo "::error::ORACLE_SSH_KEY inválida ou protegida por senha"; exit 1; }
+          grep -q "^${ORACLE_HOST} " "$ssh_dir/known_hosts" \
+            || { echo "::error::ORACLE_KNOWN_HOSTS não tem entrada para ORACLE_HOST"; exit 1; }
+          # Host fixo pelo known_hosts do secret; nada de aceitar chave nova
+          {
+            echo "SSH_KEY=$ssh_dir/key"
+            echo "SSH_OPTS=-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$ssh_dir/known_hosts -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
+          } >> "$GITHUB_ENV"
+
+      - name: Conferir VM (só leitura)
+        env:
+          # No deploy a saúde é só aviso: o deploy também serve para consertar a API
+          HEALTH_REQUIRED: ${{ env.MODE == 'dry-run' && '1' || '0' }}
+        run: bash deploy/oracle/dry-run.sh "$ORACLE_HOST"
+
+      - name: Publicar release
+        if: env.MODE == 'deploy'
+        run: bash deploy/oracle/deploy.sh "$ORACLE_HOST"
+
+      - name: Resumo
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "### Backend Oracle: ${MODE}"
+            echo "- Release: \`${GITHUB_SHA::12}\`"
+            echo "- Resultado: ${JOB_STATUS}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apagar chave do runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/oracle-ssh"

@@ -88,11 +88,75 @@ SSH: usuário `ubuntu`, chave `ssh-key-2026-10-05` (cópia local em `~/.ssh/orac
    NEXT_PUBLIC_VAPID_PUBLIC_KEY / NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER / NEXT_PUBLIC_GOOGLE_CLIENT_ID
    ```
 
-## 3. Deploy do dia a dia
+## 3. Deploy do dia a dia: automático pelo GitHub Actions
+
+Todo push ou merge na `master` que mexa em `backend/**`, `deploy/oracle/**` ou no próprio workflow dispara o [`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml). Ele roda o mesmo `deploy/oracle/deploy.sh` do deploy manual: `git archive` do commit → `releases/<sha>` → build → migrate → up → symlink `current` → smoke test em `/api/health/`. Mudança só no frontend não dispara nada aqui; a Vercel cuida dela.
+
+- **Um deploy por vez** (`concurrency: deploy-backend-oracle`). O deploy em andamento nunca é cancelado. Se chegarem vários pushes enquanto isso, o GitHub deixa na fila só o mais recente, que já contém os outros.
+- **Não afeta o MercadinhoSys.** O compose tem `name: mysuperstore`, então `--remove-orphans` e `up` só tocam os containers `mysuperstore-*`.
+- **Logs.** O repositório é público, e o log do Actions também. Por isso o CI não imprime os logs da aplicação quando o smoke test falha (`PRINT_REMOTE_LOGS=0`); veja-os na VM (seção 4). Nenhum secret é impresso.
+- O deploy manual continua valendo: `bash deploy/oracle/deploy.sh 144.22.151.18`. Não rode um manual enquanto o do CI estiver rodando.
+
+### 3.1 Cadastrar os secrets (uma vez)
+
+Sem eles o job falha no passo "Configurar SSH", antes de encostar na VM.
+
+1. **Chave SSH dedicada ao CI** (recomendado: dá para revogar sem mexer na sua). Precisa ser sem senha, porque o CI não tem como digitá-la.
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C "github-actions-mysuperstore" -f ~/.ssh/mss_deploy_gha
+   ssh -i ~/.ssh/oracle_key ubuntu@144.22.151.18 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/mss_deploy_gha.pub
+   ssh -i ~/.ssh/mss_deploy_gha ubuntu@144.22.151.18 true
+   ```
+   Atenção: o usuário `ubuntu` tem `sudo`, então essa chave dá controle total da VM (que também roda o MercadinhoSys). Guarde-a só no secret e apague a cópia local depois do cadastro, se quiser. Para revogar, remova a linha `github-actions-mysuperstore` do `~/.ssh/authorized_keys` da VM.
+2. **known_hosts** (fixa a identidade do servidor; o CI recusa um host com chave diferente):
+   ```bash
+   ssh-keyscan -t ed25519 144.22.151.18 > /tmp/oracle_known_hosts
+   ssh-keygen -lf /tmp/oracle_known_hosts
+   ```
+   O fingerprint precisa ser `SHA256:fKw6pCr3cNWBGAi9uel5nABUvf+u4r9QmGYL4D7hlic`. É o mesmo que já está no `known_hosts` de quem fez os deploys manuais (`ssh-keygen -F 144.22.151.18 -l`) e o que a VM informa em `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`. Se for diferente, **não cadastre** e investigue.
+3. **Cadastrar no GitHub:**
+   ```bash
+   gh secret set ORACLE_SSH_KEY --repo Mald1vas-Tech-Solut1ons/MySuperStore < ~/.ssh/mss_deploy_gha
+   gh secret set ORACLE_KNOWN_HOSTS --repo Mald1vas-Tech-Solut1ons/MySuperStore < /tmp/oracle_known_hosts
+   gh variable set ORACLE_HOST --repo Mald1vas-Tech-Solut1ons/MySuperStore --body 144.22.151.18
+   rm /tmp/oracle_known_hosts
+   ```
+   Opcional, mas mais seguro: cadastrar os dois secrets com `--env production` e, em *Settings → Environments → production → Deployment branches*, liberar só a `master`. Assim nenhum workflow de outra branch consegue ler a chave. O job já roda no environment `production`.
+
+Ordem sugerida: cadastrar os secrets → rodar o dry-run (3.2) → fazer o merge. O merge do PR que cria o workflow já dispara um deploy, porque ele mexe em `deploy/oracle/`.
+
+### 3.2 Dry-run (conferir sem publicar)
+
+Só leitura: testa SSH e known_hosts, confere se `shared/deploy.env` e `shared/.env.prod` existem, lista as releases, mostra para onde aponta `current`, os containers `mysuperstore-*`, memória e disco, e chama `/api/health/`.
 
 ```bash
-bash deploy/oracle/deploy.sh <IP>
+gh workflow run deploy-backend.yml --repo Mald1vas-Tech-Solut1ons/MySuperStore -f mode=dry-run
+gh run watch --repo Mald1vas-Tech-Solut1ons/MySuperStore
 ```
+
+Ou pela interface: *Actions → Deploy backend (Oracle) → Run workflow*. O botão só aparece depois que o workflow estiver na `master`. Antes disso, rode o mesmo teste localmente: `bash deploy/oracle/dry-run.sh 144.22.151.18`. O modo `deploy` manual só é aceito na `master`.
+
+### 3.3 Rollback
+
+**Rápido (na VM):** volta o symlink e a imagem para a release anterior. As imagens de cada release ficam como `mysuperstore-backend:<sha>`.
+
+```bash
+APP=~/mysuperstore
+ls -1t $APP/releases                 # mais nova primeiro
+readlink $APP/current                # release com problema
+PREV=<sha-da-release-anterior>
+cd $APP/releases/$PREV/deploy/oracle
+set -a; . $APP/shared/deploy.env; set +a
+export RELEASE=$PREV
+sudo docker image inspect mysuperstore-backend:$PREV >/dev/null || sudo -E docker compose build mss-api
+sudo docker tag mysuperstore-backend:$PREV mysuperstore-backend:latest
+sudo -E docker compose up -d --remove-orphans
+ln -sfn $APP/releases/$PREV $APP/current
+curl -fsS https://mysuperstore-api.144.22.151.18.sslip.io/api/health/
+```
+
+- **Migrations não voltam sozinhas.** Se a release ruim aplicou uma migration que o código antigo não aguenta, desfaça-a **antes** de trocar o symlink, a partir da pasta da release *nova* (o código antigo não conhece o arquivo da migration): `sudo -E docker compose run --rm -T --no-deps mss-api python manage.py migrate <app> <migration_anterior>`. Isso pode apagar dados, então faça backup do banco antes.
+- **Torne o rollback permanente na master.** O próximo push na `master` publica a `master` de novo. Faça `git revert` do commit problemático e mergeie; o CI publica a versão corrigida. Se o problema não envolve banco, esse caminho sozinho já é o rollback (leva o tempo de um build).
 
 ## 4. Operação
 

@@ -7,7 +7,9 @@ HOST="${1:-${HOST:-}}"
 [ -n "$HOST" ] || { echo "Uso: bash deploy/oracle/deploy.sh <IP>" >&2; exit 1; }
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/oracle_key}"
 APP=/home/ubuntu/mysuperstore
-SSH=(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "ubuntu@$HOST")
+# O CI troca por known_hosts estrito (ver .github/workflows/deploy-backend.yml)
+read -r -a SSH_OPTS_ARR <<<"${SSH_OPTS:--o StrictHostKeyChecking=accept-new}"
+SSH=(ssh -i "$SSH_KEY" "${SSH_OPTS_ARR[@]}" "ubuntu@$HOST")
 
 if [ "${ALLOW_DIRTY:-0}" != "1" ] && { ! git diff --quiet || ! git diff --cached --quiet; }; then
   echo "Há alterações não commitadas (use ALLOW_DIRTY=1 para ignorar)." >&2
@@ -65,6 +67,11 @@ for _ in $(seq 1 30); do
   fi
   sleep 5
 done
+# No CI os logs do Actions são públicos (repo público): logs da app ficam na VM
+if [ "${PRINT_REMOTE_LOGS:-1}" != "1" ]; then
+  echo "Smoke test falhou. Veja os logs na VM (DEPLOY.md, seção Operação)." >&2
+  exit 1
+fi
 echo "Smoke test falhou. Últimos logs da api:" >&2
 "${SSH[@]}" "cd $APP/current/deploy/oracle && set -a && . $APP/shared/deploy.env && set +a && sudo -E docker compose logs --tail 80" >&2 || true
 exit 1

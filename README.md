@@ -66,7 +66,7 @@ O dinheiro do comprador é **dividido na hora do pagamento**: a parte de cada lo
 | **Frete** | **Melhor Envio** (cotação multi-transportadora: Correios, Jadlog…) |
 | **Dados / Infra** | PostgreSQL 16 (Neon) · Redis · Celery · Meilisearch · Docker Compose |
 | **Mídia / Notificações** | Cloudinary · Web Push (VAPID) |
-| **Deploy** | Backend em **Railway** · Frontend em **Vercel** |
+| **Deploy** | Backend em VM **Oracle Cloud**, publicado pelo GitHub Actions a cada push na `master` ([DEPLOY.md](DEPLOY.md)) · Frontend em **Vercel** |
 
 ---
 
