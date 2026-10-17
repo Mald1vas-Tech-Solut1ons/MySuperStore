@@ -80,6 +80,7 @@ Campos (env → padrão atual). `${name}` etc. indicam que o padrão é derivado
 | `video.text` | `NEXT_PUBLIC_BRAND_VIDEO_TEXT` | `Cada bolsa leva horas de nós feitos à mão, com fio de algodão e acabamento caprichado. Assista ao processo e escolha a sua.` |
 | `video.caption` | `NEXT_PUBLIC_BRAND_VIDEO_CAPTION` | `Do fio à bolsa: o processo no ateliê` |
 | `video.steps` (lista) | `NEXT_PUBLIC_BRAND_VIDEO_STEPS` | `01 · Escolha do fio`, `02 · Nós e trama`, `03 · Acabamento` |
+| `video.films` (lista `src::poster::legenda`) | `NEXT_PUBLIC_BRAND_VIDEO_FILMS` | `/brand/atelie/filmes/bolsa-tote.mp4::…-poster.webp::Bolsa Tote em macramê cru, feita à mão`, `/brand/atelie/filmes/rasteirinha-lilas.mp4::…::Rasteirinha lilás: do solado ao último nó` → `{ src, poster, label }[]`; `-` desliga e a seção volta a usar o vídeo da loja |
 | `customOrder.enabled` | `NEXT_PUBLIC_BRAND_CUSTOM_ORDER` | `true` (só `"off"` desliga) |
 | `customOrder.text` | `NEXT_PUBLIC_BRAND_CUSTOM_ORDER_TEXT` | `Escolha a cor do fio, o tamanho e a ferragem — dourada ou prateada. A gente cria a peça junto com você e envia para qualquer lugar do Brasil.` |
 | `images.hero` | `NEXT_PUBLIC_BRAND_HERO_IMAGE` | `/brand/atelie/caracol-praia.webp` |
@@ -203,6 +204,7 @@ Mapeamento YAML → frontend (`store.` omitido; formato exato do arquivo em `dep
 `collection_subtitle`→`_COLLECTION_SUBTITLE`, `search.placeholder`→`_SEARCH_PLACEHOLDER`,
 `search.suggestions`→`_SEARCH_SUGGESTIONS`, `chat.greeting`→`_CHAT_GREETING`, `chat.chips`→`_CHAT_CHIPS`,
 `video.eyebrow|title|emphasis|text|caption|steps`→`_VIDEO_EYEBROW|_VIDEO_TITLE|_VIDEO_EMPHASIS|_VIDEO_TEXT|_VIDEO_CAPTION|_VIDEO_STEPS`,
+`video.films` (lista de `{src, poster, label}`; `false` → `-`)→`_VIDEO_FILMS`,
 `custom_order` (`false`→`off`; `true` não escreve nada)→`_CUSTOM_ORDER`, `custom_order_text`→`_CUSTOM_ORDER_TEXT`
 (onde `_X` = `NEXT_PUBLIC_BRAND_X`);
 `colors.bg|bg_alt|surface|primary|accent|secondary|dark|text`→`NEXT_PUBLIC_COLOR_BG|_BG_ALT|_SURFACE|_PRIMARY|_ACCENT|_SECONDARY|_DARK|_TEXT`;

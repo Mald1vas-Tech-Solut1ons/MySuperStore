@@ -4,6 +4,7 @@
 
 export type NavItem = { label: string; href: string };
 export type LookbookItem = { src: string; alt: string };
+export type Film = { src: string; poster: string; label: string };
 
 export type Brand = {
   name: string;
@@ -23,7 +24,7 @@ export type Brand = {
   nav: NavItem[];
   search: { placeholder: string; suggestions: string[] };
   chat: { greeting: string; chips: string[] };
-  video: { eyebrow: string; title: string; titleEmphasis: string; text: string; caption: string; steps: string[] };
+  video: { eyebrow: string; title: string; titleEmphasis: string; text: string; caption: string; steps: string[]; films: Film[] };
   customOrder: { enabled: boolean; text: string };
   images: { hero: string; heroAlt: string; lookbook: LookbookItem[]; detail: string; detailAlt: string; ogAlt: string };
   legal: { name: string; document: string; address: string; email: string };
@@ -62,6 +63,18 @@ const parseLookbook = (v: string | undefined): LookbookItem[] =>
     const i = item.indexOf("::");
     return i < 0 ? { src: item, alt: "" } : { src: item.slice(0, i).trim(), alt: item.slice(i + 2).trim() };
   });
+
+// "src::poster::legenda" → { src, poster, label }; poster e legenda são opcionais. "-" desliga os filmes.
+const parseFilms = (v: string | undefined): Film[] =>
+  (v ?? "").trim() === "-"
+    ? []
+    : list(v, [
+        "/brand/atelie/filmes/bolsa-tote.mp4::/brand/atelie/filmes/bolsa-tote-poster.webp::Bolsa Tote em macramê cru, feita à mão",
+        "/brand/atelie/filmes/rasteirinha-lilas.mp4::/brand/atelie/filmes/rasteirinha-lilas-poster.webp::Rasteirinha lilás: do solado ao último nó",
+      ]).map((item) => {
+        const [src = "", poster = "", label = ""] = item.split("::").map((s) => s.trim());
+        return { src, poster, label };
+      }).filter((f) => f.src);
 
 // Campos usados nos padrões derivados.
 const name = str(process.env.NEXT_PUBLIC_BRAND_NAME, "Ateliê Eli Trassi");
@@ -133,6 +146,8 @@ export const brand: Brand = {
     ),
     caption: str(process.env.NEXT_PUBLIC_BRAND_VIDEO_CAPTION, "Do fio à bolsa: o processo no ateliê"),
     steps: list(process.env.NEXT_PUBLIC_BRAND_VIDEO_STEPS, ["01 · Escolha do fio", "02 · Nós e trama", "03 · Acabamento"]),
+    // Filmes de marca (mp4 em /public ou URL absoluta): tocam mudos em sequência quando a seção aparece.
+    films: parseFilms(process.env.NEXT_PUBLIC_BRAND_VIDEO_FILMS),
   },
   // Seção "Sob medida": ligada por padrão; só "off" desliga.
   customOrder: {

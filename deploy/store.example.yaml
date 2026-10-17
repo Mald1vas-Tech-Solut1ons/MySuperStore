@@ -52,6 +52,8 @@ store:
     text: Cada peça passa pelo torno, pela secagem e pelo forno.
     caption: Do barro à peça
     steps: [01 · Modelagem, 02 · Queima, 03 · Esmalte]
+    films:                         # mp4 em /public ou URL; tocam mudos em sequência. false = sem filmes
+      - { src: /brand/loja/filme-torno.mp4, poster: /brand/loja/filme-torno.webp, label: Do torno ao forno }
   custom_order: true               # false esconde a seção "Sob medida"
   custom_order_text: Escolha a cor do esmalte e o tamanho.
   colors:                          # hex; as 5 principais: bg, primary, accent, dark, text

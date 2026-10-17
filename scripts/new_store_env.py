@@ -95,6 +95,11 @@ def frontend_env(store, api_url, api_host):
     nav = [f"{i['label']}={i['slug']}" for i in store.get("nav") or [] if isinstance(i, dict) and i.get("label") and i.get("slug")]
     if nav:
         env["NEXT_PUBLIC_BRAND_NAV"] = "|".join(nav)
+    films = (store.get("video") or {}).get("films")
+    if films is False:
+        env["NEXT_PUBLIC_BRAND_VIDEO_FILMS"] = "-"
+    elif films := [f"{i['src']}::{i.get('poster') or ''}::{i.get('label') or ''}" for i in films or [] if isinstance(i, dict) and i.get("src")]:
+        env["NEXT_PUBLIC_BRAND_VIDEO_FILMS"] = "|".join(films)
     if store.get("custom_order") is False:
         env["NEXT_PUBLIC_BRAND_CUSTOM_ORDER"] = "off"
     # Cores sem "#": em .env sem aspas, "#" vira comentário e a cor some (palette.ts aceita sem "#").
