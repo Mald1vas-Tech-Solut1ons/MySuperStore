@@ -41,7 +41,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 90s
-    mem_limit: 320m
+    # 320m não aguentava upload de foto/vídeo (OOM-kill do daphne em 16/10/2026).
+    # Uso normal ~140 MB; o teto maior absorve os picos de processamento de mídia.
+    mem_limit: 640m
+    memswap_limit: 1280m
 
   # Worker com beat embutido e pool solo: um único processo Python
   mss-worker:

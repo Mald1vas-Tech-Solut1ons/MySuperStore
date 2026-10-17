@@ -1,0 +1,96 @@
+# Modelo de configuração de uma loja nova (copie para deploy/stores/<slug>.yaml — pasta fora do git).
+# Gere os .env com:  python scripts/new_store_env.py deploy/stores/<slug>.yaml --out deploy/stores/<slug>/
+# Campo ausente ou vazio = usa o padrão do código (o do Ateliê Eli Trassi). "-" = vazio de propósito.
+
+store:
+  slug: loja-teste                 # minúsculas, números e hífen
+  mode: single                     # single (loja própria) | marketplace
+  name: Loja Teste
+  full_name: Loja Teste Cerâmica
+  tagline: Cerâmica feita à mão
+  segment: cerâmica                # palavra pequena sob o logo
+  shop_noun: ateliê                # como a loja se refere a si mesma
+  location: Centro · Campinas, SP
+  shipping: Enviamos para todo o Brasil
+  announcement: Frete grátis acima de R$ 299
+  about: ateliê de cerâmica feita à mão em Campinas-SP, que envia para todo o Brasil   # usado pelo chat IA
+  whatsapp: ""                     # só dígitos com DDI, ex.: 5519999999999
+  instagram: ""                    # usuário sem @
+  meta:
+    title: Loja Teste Cerâmica — peças feitas à mão
+    description: Peças de cerâmica feitas à mão em Campinas. Envio para todo o Brasil.
+    short: Cerâmica feita à mão em Campinas-SP.
+  hero:
+    eyebrow: Ateliê · Campinas, SP
+    title: Feito à mão,
+    emphasis: peça a peça.
+    subtitle: Canecas, pratos e vasos criados um a um. Enviamos para todo o Brasil.
+    image: /brand/atelie/caracol-praia.webp
+    image_alt: Peça em destaque
+  detail_image: /brand/atelie/caracol-dourada.webp
+  detail_alt: Detalhe de uma peça feita à mão
+  og_alt: Peça da Loja Teste
+  lookbook:
+    - { src: /brand/atelie/boho-cafe.webp, alt: Peça 1 }
+    - { src: /brand/atelie/boho-offwhite.webp, alt: Peça 2 }
+    - { src: /brand/atelie/boho-oliva-modelo.webp, alt: Peça 3 }
+  nav:
+    - { label: Canecas, slug: canecas }
+    - { label: Pratos, slug: pratos }
+  marquee: [feito à mão, peça a peça, esmalte atóxico, peças únicas]
+  collection_subtitle: Cada peça é única.
+  search:
+    placeholder: Busque canecas, pratos…
+    suggestions: [caneca, prato]
+  chat:
+    greeting: Oi! Sou a assistente da Loja Teste. Posso ajudar com peças, preços e frete.
+    chips: ["Quais peças estão disponíveis?", "Quanto custa o frete?"]
+  video:
+    eyebrow: No ateliê
+    title: Do barro
+    emphasis: à peça
+    text: Cada peça passa pelo torno, pela secagem e pelo forno.
+    caption: Do barro à peça
+    steps: [01 · Modelagem, 02 · Queima, 03 · Esmalte]
+  custom_order: true               # false esconde a seção "Sob medida"
+  custom_order_text: Escolha a cor do esmalte e o tamanho.
+  colors:                          # hex; as 5 principais: bg, primary, accent, dark, text
+    bg: "#F5F1EA"
+    bg_alt: "#EEE7DC"
+    surface: "#E4D9C8"
+    primary: "#2F5D62"
+    accent: "#C9853F"
+    secondary: "#5B6146"
+    dark: "#1E2A2B"
+    text: "#1A1F1F"
+  legal:                           # Decreto 7.962/2013 — aparece no rodapé quando preenchido
+    name: ""                       # razão social ou nome completo
+    document: ""                   # CPF ou CNPJ
+    address: ""
+    email: ""
+  credit_url: ""                   # link do "Feito por Maldivas Tech" (padrão: https://maldivastech.dev; "-" tira o link)
+
+domains:
+  frontend: https://loja-teste.vercel.app
+  api: https://api.loja-teste.example.com
+
+# Copiados como estão (sobrescrevem os derivados). Segredos aqui: este arquivo NUNCA vai para o git.
+backend:
+  env:
+    SHIPPING_MODE: flat
+    FLAT_SHIPPING_PRICE: "25.00"
+    FREE_SHIPPING_MIN: "299.00"
+    EFI_ENV: sandbox
+    # EFI_PIX_CLIENT_ID_HOMOL: ...
+    # EFI_PIX_CLIENT_SECRET_HOMOL: ...
+    # EFI_COBRANCAS_CLIENT_ID_HOMOL: ...
+    # EFI_COBRANCAS_CLIENT_SECRET_HOMOL: ...
+    # EFI_PIX_KEY: ...
+    # EFI_ACCOUNT_IDENTIFIER: ...
+    # MAIL_SERVER / MAIL_PORT / MAIL_USERNAME / MAIL_PASSWORD / MAIL_DEFAULT_SENDER
+    # GEMINI_API_KEY: ...
+frontend:
+  env:
+    NEXT_PUBLIC_IS_DEBUG: "false"
+    # NEXT_PUBLIC_EFI_ACCOUNT_IDENTIFIER: ...
+    # NEXT_PUBLIC_VAPID_PUBLIC_KEY: ...

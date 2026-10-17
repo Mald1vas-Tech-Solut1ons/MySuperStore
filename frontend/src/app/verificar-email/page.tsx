@@ -9,6 +9,7 @@ import { CheckCircle2, XCircle, Loader2, MailCheck, Store } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { OfficialLogo } from "@/components/Brand";
+import { isSingleStore } from "@/config/storeMode";
 
 type Status = "loading" | "success" | "error";
 
@@ -75,10 +76,10 @@ function VerifyEmailInner() {
             <p className="text-muted-foreground mb-8">{message}</p>
             <div className="flex flex-col gap-3">
               <Link
-                href="/seller/onboarding"
+                href={isSingleStore ? "/" : "/seller/onboarding"}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#E6B53C] to-[#B38F25] text-black font-black hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
               >
-                <Store className="w-5 h-5" /> Abrir minha loja
+                <Store className="w-5 h-5" /> {isSingleStore ? "Ir para a loja" : "Abrir minha loja"}
               </Link>
               <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
                 Voltar para a loja
@@ -95,12 +96,12 @@ function VerifyEmailInner() {
             <h1 className="text-2xl font-black text-foreground mb-2">Não rolou</h1>
             <p className="text-muted-foreground mb-8">{message}</p>
             <div className="flex flex-col gap-3">
-              <Link
+              {!isSingleStore && <Link
                 href="/seller/onboarding"
                 className="w-full py-3.5 rounded-xl bg-black/[0.04] border border-border text-foreground font-bold hover:bg-black/[0.04] transition-colors flex items-center justify-center gap-2"
               >
                 <MailCheck className="w-5 h-5" /> Reenviar confirmação
-              </Link>
+              </Link>}
               <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
                 Voltar para a loja
               </Link>

@@ -35,8 +35,7 @@ export function CustomOrder() {
               Do seu jeito, <em className="text-atelie-clay">feita para você</em>.
             </motion.h2>
             <motion.p {...reveal(0.12)} className="font-atelie text-base sm:text-lg leading-relaxed text-atelie-ink/70 max-w-md">
-              Escolha a cor do fio, o tamanho e a ferragem — dourada ou prateada. A gente cria a peça junto com você e envia
-              para qualquer lugar do Brasil.
+              {brand.customOrder.text}
             </motion.p>
             <motion.ol {...reveal(0.18)} className="space-y-3 pt-2">
               {steps.map((step, i) => (
