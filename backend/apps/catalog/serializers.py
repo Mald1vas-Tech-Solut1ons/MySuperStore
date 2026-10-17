@@ -274,7 +274,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     is_flash_sale = serializers.SerializerMethodField()
     discount_percentage = serializers.SerializerMethodField()
     time_remaining_seconds = serializers.SerializerMethodField()
-    variants = ProductVariantSerializer(many=True, read_only=True)
+    variants = serializers.SerializerMethodField()
     is_demo = serializers.SerializerMethodField()
     is_boosted = serializers.BooleanField(read_only=True)
     carts_count = serializers.IntegerField(read_only=True, default=0)
@@ -293,6 +293,17 @@ class ProductListSerializer(serializers.ModelSerializer):
             "variants", "is_free_shipping", "estimated_delivery_days",
             "weight", "length", "width", "height", "is_demo", "carts_count", "is_boosted"
         ]
+
+    def get_variants(self, obj):
+        # A vitrine (ProductViewSet) pré-carrega as variantes ativas em `active_variants`.
+        # Sem esse prefetch (lista do lojista, favoritos) mantém o comportamento anterior:
+        # todas as variantes do produto.
+        variants = getattr(obj, "active_variants", None)
+        if variants is None:
+            variants = obj.variants.all()
+        return ProductVariantSerializer(
+            variants, many=True, context={**self.context, "product": obj}
+        ).data
 
     def get_primary_image(self, obj):
         request = self.context.get("request")
