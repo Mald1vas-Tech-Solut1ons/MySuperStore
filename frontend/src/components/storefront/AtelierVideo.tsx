@@ -172,6 +172,20 @@ function BrandFilms({ films }: { films: Film[] }) {
       <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/40 to-transparent" />
       <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/65 to-transparent" />
 
+      {/* Antes das barras e dos controles: o overlay de play não pode cobrir os botões. */}
+      {!playing && paused && (
+        <button
+          type="button"
+          onClick={() => setUserPaused(false)}
+          aria-label={`Reproduzir vídeo: ${film.label || brand.video.caption}`}
+          className="group absolute inset-0 grid place-items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-atelie-clay"
+        >
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-white/90 shadow-lg transition-transform duration-300 group-hover:scale-105">
+            <Play className="ml-0.5 h-6 w-6 text-atelie-ink" fill="currentColor" />
+          </span>
+        </button>
+      )}
+
       {films.length > 1 && (
         <div className="absolute inset-x-4 top-3 flex gap-2 sm:inset-x-6 sm:top-4">
           {films.map((f, i) => (
@@ -195,19 +209,6 @@ function BrandFilms({ films }: { films: Film[] }) {
             </button>
           ))}
         </div>
-      )}
-
-      {!playing && paused && (
-        <button
-          type="button"
-          onClick={() => setUserPaused(false)}
-          aria-label={`Reproduzir vídeo: ${film.label || brand.video.caption}`}
-          className="group absolute inset-0 grid place-items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-atelie-clay"
-        >
-          <span className="grid h-16 w-16 place-items-center rounded-full bg-white/90 shadow-lg transition-transform duration-300 group-hover:scale-105">
-            <Play className="ml-0.5 h-6 w-6 text-atelie-ink" fill="currentColor" />
-          </span>
-        </button>
       )}
 
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-4 px-5 pb-4 sm:px-6 sm:pb-5">
