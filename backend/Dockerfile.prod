@@ -19,6 +19,15 @@ RUN pip install -r requirements/prod.txt
 
 COPY backend/ .
 
-RUN python manage.py collectstatic --noinput || true
+# collectstatic no build (antes rodava no start do mss-api e atrasava a volta da API
+# após restart/OOM). Valores só de build: o settings exige a SECRET_KEY e o CLOUDINARY_URL
+# fictício põe os apps do Cloudinary no INSTALLED_APPS como em produção (os estáticos
+# deles entram no manifest). Com o cloudinary_storage instalado, o collectstatic dele só
+# copia arquivos com --upload-unhashed-files (o destino é o STATIC_ROOT local do whitenoise).
+# Sem "|| true": se falhar, o build falha.
+RUN DJANGO_SECRET_KEY=collectstatic-build-only \
+    DATABASE_URL=sqlite:////tmp/collectstatic.sqlite3 \
+    CLOUDINARY_URL=cloudinary://build:build@build \
+    python manage.py collectstatic --noinput --upload-unhashed-files
 
 EXPOSE 8000

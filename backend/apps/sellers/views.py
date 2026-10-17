@@ -1,3 +1,6 @@
+import logging
+
+from django.conf import settings
 from django.db.models import Avg, Count, F, Prefetch, Q
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -12,6 +15,8 @@ from .serializers import (
     SellerPublicSerializer,
     SellerUpdateSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 # -- Perfil publico ------------------------------------------------------------
 
@@ -81,6 +86,8 @@ class SellerProductViewSet(viewsets.ModelViewSet):
     DELETE /sellers/me/products/{id}/      -- remove
     POST   /sellers/me/products/{id}/images/            -- faz upload de imagem
     DELETE /sellers/me/products/{id}/images/{image_id}/ -- remove imagem
+    POST   /sellers/me/products/{id}/video/signature/   -- assina upload direto ao Cloudinary
+    POST   /sellers/me/products/{id}/video/             -- confirma {public_id} (ou multipart sem Cloudinary)
     POST   /sellers/me/products/{id}/variants/                     -- cria variante
     PATCH  /sellers/me/products/{id}/variants/{variant_id}/        -- atualiza variante
     DELETE /sellers/me/products/{id}/variants/{variant_id}/        -- remove variante
@@ -218,7 +225,6 @@ class SellerProductViewSet(viewsets.ModelViewSet):
             raise NotFound("Produto nao encontrado.")
 
     MAX_IMAGES_PER_PRODUCT = 6
-    MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB
 
     def upload_image(self, request, product_pk=None):
         from apps.catalog.serializers import ProductImageUploadSerializer
@@ -273,21 +279,47 @@ class SellerProductViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Foto de capa definida.", "id": str(image.id)})
 
     # -- Vídeo (máx. 1 por produto) -------------------------------------------
+    # Com Cloudinary o navegador sobe o vídeo direto para lá (video_upload_signature) e a
+    # API só confirma e grava a URL: os bytes nunca passam pela VM (ver apps/sellers/media.py).
+
+    def video_upload_signature(self, request, product_pk=None):
+        from . import media
+        product = self._get_product(product_pk)
+        if not media.cloudinary_enabled():
+            # Dev sem Cloudinary: o frontend cai no envio multipart para a API.
+            return Response({"direct": False})
+        return Response(media.signed_upload(product))
 
     def upload_video(self, request, product_pk=None):
+        from . import media
         product = self._get_product(product_pk)
+
+        if request.data.get("public_id"):
+            if not media.cloudinary_enabled():
+                return Response({"detail": "Upload direto indisponível."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                url = media.fetch_uploaded_video(product, str(request.data["public_id"]))
+            except media.VideoRejected as exc:
+                return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:  # noqa: BLE001
+                logger.exception("Falha ao confirmar vídeo do produto %s no Cloudinary", product.pk)
+                return Response({"detail": "Não foi possível confirmar o vídeo agora. Tente de novo."},
+                                status=status.HTTP_502_BAD_GATEWAY)
+            self._replace_video(product, video_external=url)
+            return Response({"video_url": url}, status=status.HTTP_201_CREATED)
+
         video = request.FILES.get("video")
         if not video:
             return Response({"detail": "Nenhum vídeo enviado."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if video.size > self.MAX_VIDEO_BYTES:
+        if video.size > settings.PRODUCT_VIDEO_MAX_BYTES:
             return Response(
                 {"detail": "Vídeo excede o limite de 50 MB. Comprima ou use um clipe mais curto."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         content_type = (getattr(video, "content_type", "") or "").lower()
         ext = video.name.split('.')[-1].lower() if video.name else ""
-        
+
         # Muitas vezes o Safari no iOS manda videos como application/octet-stream
         if not content_type.startswith("video/") and ext not in ["mp4", "mov", "webm", "avi", "mkv"]:
             return Response(
@@ -295,41 +327,41 @@ class SellerProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Substitui o vídeo anterior, se houver (mantém o limite de 1).
-        if product.video:
-            product.video.delete(save=False)
-            
-        # Tratamento especial para Cloudinary (que precisa de resource_type="video")
-        try:
-            from django.conf import settings
-            if 'cloudinary' in settings.INSTALLED_APPS and getattr(settings, 'STORAGES', {}).get('default', {}).get('BACKEND') == 'cloudinary_storage.storage.MediaCloudinaryStorage':
-                import cloudinary.uploader
-                result = cloudinary.uploader.upload(
-                    video, 
-                    resource_type="video", 
-                    folder="products/videos/"
-                )
-                product.video_external = result.get("secure_url")
-                product.video = None
-                product.save(update_fields=["video", "video_external", "updated_at"])
-                return Response(
-                    {"video_url": product.video_external},
-                    status=status.HTTP_201_CREATED,
-                )
-        except Exception as e:
-            pass # Fallback para storage padrão
+        if media.cloudinary_enabled():
+            # Frontend antigo (multipart) durante a transição: sobe em pedaços de 6 MB.
+            try:
+                url = media.upload_video_file(product, video)
+            except Exception:  # noqa: BLE001
+                logger.exception("Falha ao enviar vídeo do produto %s ao Cloudinary", product.pk)
+                return Response({"detail": "Falha ao enviar o vídeo. Tente de novo."},
+                                status=status.HTTP_502_BAD_GATEWAY)
+            self._replace_video(product, video_external=url)
+            return Response({"video_url": url}, status=status.HTTP_201_CREATED)
 
-        product.video = video
-        product.save(update_fields=["video", "updated_at"])
+        self._replace_video(product, video_file=video)
         return Response(
             {"video_url": request.build_absolute_uri(product.video.url)},
             status=status.HTTP_201_CREATED,
         )
 
+    def _replace_video(self, product, video_file=None, video_external=None):
+        """Troca o vídeo do produto (mantém o limite de 1), limpando o anterior."""
+        from . import media
+        if product.video:
+            product.video.delete(save=False)
+        if media.cloudinary_enabled():
+            media.destroy_previous_video(product, keep_url=video_external)
+        product.video = video_file
+        product.video_external = video_external
+        product.save(update_fields=["video", "video_external", "updated_at"])
+
     def delete_video(self, request, product_pk=None):
+        from . import media
         product = self._get_product(product_pk)
         if product.video:
             product.video.delete(save=False)
+        if media.cloudinary_enabled():
+            media.destroy_previous_video(product)
         product.video = None
         product.video_external = None
         product.save(update_fields=["video", "video_external", "updated_at"])

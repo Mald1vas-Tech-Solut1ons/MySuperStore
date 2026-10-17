@@ -2,7 +2,7 @@ import io
 import os
 from celery import shared_task
 from django.core.files.base import ContentFile
-from PIL import Image
+from PIL import Image, ImageOps
 from .models import ProductImage
 
 
@@ -29,13 +29,20 @@ def optimize_product_image_task(product_image_id):
         # Já é WebP no tamanho final: nada a fazer (decidido pelo conteúdo, não pelo nome).
         if image.format == "WEBP" and max(image.size) <= 1200:
             return f"Imagem {product_image.id} já está otimizada."
-        
-        # Converte para RGB se necessário (WebP suporta RGB e RGBA)
-        if image.mode not in ("RGB", "RGBA"):
-            image = image.convert("RGB")
 
-        # Redimensiona mantendo a proporção (thumbnail) com tamanho máximo de 1200px
+        # Reduz ANTES de converter, e com draft explícito: o JPEG já é decodificado em
+        # escala menor (12 MP → 2000x1500), sem materializar a foto inteira no worker.
+        # (O thumbnail sozinho só usa draft com folga de 2x, que 12 MP→1200px não tem.)
+        # Pico medido numa foto de 12 MP: RGB 65→24 MB, CMYK 93→24 MB, cinza 65→16 MB.
+        image.draft(None, (1200, 1200))
         image.thumbnail((1200, 1200))
+        # Foto de celular sem a compressão do navegador vem deitada + tag EXIF de rotação;
+        # o WebP gerado não leva o EXIF, então aplica a rotação nos pixels.
+        image = ImageOps.exif_transpose(image)
+
+        # Converte se necessário (WebP suporta RGB e RGBA)
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGBA" if image.mode in ("P", "LA", "PA") else "RGB")
 
         # Salva a imagem comprimida em formato WebP no buffer
         output_buffer = io.BytesIO()

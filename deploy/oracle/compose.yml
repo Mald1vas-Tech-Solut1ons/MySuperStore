@@ -31,7 +31,8 @@ services:
       context: ../..
       dockerfile: backend/Dockerfile.prod
     # daphne = HTTP + WebSocket (notificações/chat)
-    command: sh -c "python manage.py collectstatic --noinput --upload-unhashed-files >/dev/null && exec daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application"
+    # Estáticos já vêm coletados na imagem (Dockerfile.prod): a API volta em segundos.
+    command: daphne -b 0.0.0.0 -p 8000 --proxy-headers config.asgi:application
     expose:
       - "8000"
     healthcheck:

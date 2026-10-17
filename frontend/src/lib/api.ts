@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosProgressEvent } from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -252,10 +252,16 @@ export const sellerDashboardApi = {
       api.delete(`/sellers/me/products/${productId}/images/${imageId}/`),
     setPrimaryImage: (productId: string, imageId: string) =>
       api.post(`/sellers/me/products/${productId}/images/${imageId}/primary/`),
-    uploadVideo: (productId: string, formData: FormData) =>
+    uploadVideo: (productId: string, formData: FormData, onUploadProgress?: (e: AxiosProgressEvent) => void) =>
       api.post(`/sellers/me/products/${productId}/video/`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress,
       }),
+    // Upload direto ao Cloudinary: a API só assina e depois confirma o public_id.
+    videoUploadSignature: (productId: string) =>
+      api.post<VideoUploadSignature>(`/sellers/me/products/${productId}/video/signature/`),
+    attachVideo: (productId: string, publicId: string) =>
+      api.post<{ video_url: string }>(`/sellers/me/products/${productId}/video/`, { public_id: publicId }),
     deleteVideo: (productId: string) =>
       api.delete(`/sellers/me/products/${productId}/video/`),
     createVariant: (productId: string, data: any) =>
@@ -267,6 +273,17 @@ export const sellerDashboardApi = {
 };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+export type VideoUploadSignature =
+  | { direct: false }
+  | {
+      direct: true;
+      upload_url: string;
+      api_key: string;
+      signature: string;
+      params: Record<string, string | number> & { public_id: string };
+      max_bytes: number;
+    };
+
 interface RegisterPayload {
   email: string;
   person_type: string;

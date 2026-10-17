@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 from django.utils import timezone
 
@@ -64,6 +65,19 @@ class ProductImageUploadSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return get_clean_image_url(obj.image, self.context.get("request"), getattr(obj, "external_url", None))
+
+    def validate_image(self, value):
+        # O navegador já comprime (~0,5 MB); estes tetos protegem a API (VM de 1 GB) e o
+        # worker do Celery quando a compressão falha ou alguém chama a API direto.
+        if value is None:
+            return value
+        if value.size > settings.PRODUCT_PHOTO_MAX_BYTES:
+            raise serializers.ValidationError("Foto passa de 10 MB. Use uma foto menor.")
+        # O ImageField do Django já abriu só o cabeçalho com o Pillow (sem decodificar).
+        pil = getattr(value, "image", None)
+        if pil is not None and pil.size[0] * pil.size[1] > settings.PRODUCT_PHOTO_MAX_PIXELS:
+            raise serializers.ValidationError("Foto com resolução alta demais. Use até 40 megapixels.")
+        return value
 
 
 # -- Especificacoes ------------------------------------------------------------
