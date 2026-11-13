@@ -60,25 +60,25 @@ Campos (env → padrão atual). `${name}` etc. indicam que o padrão é derivado
 | `announcement` (faixa do topo, antes de ` · ${shipping}`) | `NEXT_PUBLIC_BRAND_ANNOUNCEMENT` | `Frete grátis acima de R$ 299` |
 | `whatsapp` | `NEXT_PUBLIC_WHATSAPP` | `""` (já existe; só dígitos) |
 | `instagram` | `NEXT_PUBLIC_INSTAGRAM` | `""` (já existe; sem @) |
-| `meta.title` | `NEXT_PUBLIC_BRAND_META_TITLE` | `Ateliê Eli Trassi Macramê — bolsas feitas à mão` |
-| `meta.description` | `NEXT_PUBLIC_BRAND_META_DESCRIPTION` | `Bolsas e peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.` |
-| `meta.shortDescription` | `NEXT_PUBLIC_BRAND_META_SHORT` | `Bolsas e peças em macramê feitas à mão em Guarulhos-SP.` |
+| `meta.title` | `NEXT_PUBLIC_BRAND_META_TITLE` | `Ateliê Eli Trassi Macramê — bolsas, rasteirinhas e moda praia feitas à mão` |
+| `meta.description` | `NEXT_PUBLIC_BRAND_META_DESCRIPTION` | `Bolsas, rasteirinhas, moda praia e outras peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.` |
+| `meta.shortDescription` | `NEXT_PUBLIC_BRAND_META_SHORT` | `Bolsas, rasteirinhas e moda praia em macramê feitas à mão em Guarulhos-SP.` |
 | `hero.eyebrow` | `NEXT_PUBLIC_BRAND_HERO_EYEBROW` | `Ateliê · ${location}` |
 | `hero.title` | `NEXT_PUBLIC_BRAND_HERO_TITLE` | `Feito à mão,` |
 | `hero.titleEmphasis` | `NEXT_PUBLIC_BRAND_HERO_EMPHASIS` | `nó a nó.` |
-| `hero.subtitle` | `NEXT_PUBLIC_BRAND_HERO_SUBTITLE` | `Bolsas e peças em macramê criadas uma a uma no ateliê. ${shipping}.` |
+| `hero.subtitle` | `NEXT_PUBLIC_BRAND_HERO_SUBTITLE` | `Bolsas, rasteirinhas e moda praia em macramê, criadas uma a uma no ateliê. ${shipping}.` |
 | `marquee` (lista) | `NEXT_PUBLIC_BRAND_MARQUEE` | `feito à mão`, `nó a nó`, `fio de algodão`, `sob medida`, `de Guarulhos para todo o Brasil`, `peças únicas` |
 | `collectionSubtitle` | `NEXT_PUBLIC_BRAND_COLLECTION_SUBTITLE` | `Cada peça é feita à mão, uma a uma. Quando acaba, a próxima pode sair diferente — e esse é o charme.` |
-| `nav` (lista `Rótulo=slug`) | `NEXT_PUBLIC_BRAND_NAV` | `Bolsas=bolsas`, `Chapéus=chapeus`, `Calçados=calcados`, `Casa=casa` → `{ label, href: "/?category=<slug>" }[]`; item sem `=` é descartado. |
-| `search.placeholder` | `NEXT_PUBLIC_BRAND_SEARCH_PLACEHOLDER` | `Busque bolsas, chapéus, peças…` |
+| `nav` (lista `Rótulo=slug`) | `NEXT_PUBLIC_BRAND_NAV` | `Bolsas=bolsas`, `Rasteirinhas=rasteirinhas`, `Calçados=calcados`, `Moda Praia=moda-praia`, `Moda Feminina=moda-feminina`, `Chapéus=chapeus`, `Acessórios=acessorios`, `Casa=casa` → `{ label, href: "/?category=<slug>" }[]`; item sem `=` é descartado. |
+| `search.placeholder` | `NEXT_PUBLIC_BRAND_SEARCH_PLACEHOLDER` | `Busque bolsas, rasteirinhas, moda praia…` |
 | `search.suggestions` (lista) | `NEXT_PUBLIC_BRAND_SEARCH_SUGGESTIONS` | `bolsa caracol`, `boho`, `chapéu`, `sob medida` |
 | `chat.greeting` | `NEXT_PUBLIC_BRAND_CHAT_GREETING` | `Oi! Sou a assistente do ${name}. Posso te ajudar com as peças, preços, encomendas sob medida, frete e cuidados com o macramê. 🧶` |
-| `chat.chips` (lista) | `NEXT_PUBLIC_BRAND_CHAT_CHIPS` | `Quais bolsas estão disponíveis?`, `Como funciona o sob medida?`, `Quanto custa o frete?`, `Como cuidar do macramê?` |
+| `chat.chips` (lista) | `NEXT_PUBLIC_BRAND_CHAT_CHIPS` | `Quais peças estão disponíveis?`, `Como funciona o sob medida?`, `Quanto custa o frete?`, `Como cuidar do macramê?` |
 | `video.eyebrow` | `NEXT_PUBLIC_BRAND_VIDEO_EYEBROW` | `No ateliê` |
 | `video.title` | `NEXT_PUBLIC_BRAND_VIDEO_TITLE` | `Do fio` |
 | `video.titleEmphasis` | `NEXT_PUBLIC_BRAND_VIDEO_EMPHASIS` | `à peça` |
 | `video.text` | `NEXT_PUBLIC_BRAND_VIDEO_TEXT` | `Cada bolsa leva horas de nós feitos à mão, com fio de algodão e acabamento caprichado. Assista ao processo e escolha a sua.` |
-| `video.caption` | `NEXT_PUBLIC_BRAND_VIDEO_CAPTION` | `Do fio à bolsa: o processo no ateliê` |
+| `video.caption` | `NEXT_PUBLIC_BRAND_VIDEO_CAPTION` | `Do fio à peça: o processo no ateliê` |
 | `video.steps` (lista) | `NEXT_PUBLIC_BRAND_VIDEO_STEPS` | `01 · Escolha do fio`, `02 · Nós e trama`, `03 · Acabamento` |
 | `video.films` (lista `src::poster::legenda`) | `NEXT_PUBLIC_BRAND_VIDEO_FILMS` | `/brand/atelie/filmes/bolsa-tote.mp4::…-poster.webp::Bolsa Tote em macramê cru, feita à mão`, `/brand/atelie/filmes/rasteirinha-lilas.mp4::…::Rasteirinha lilás: do solado ao último nó` → `{ src, poster, label }[]`; `-` desliga e a seção volta a usar o vídeo da loja |
 | `customOrder.enabled` | `NEXT_PUBLIC_BRAND_CUSTOM_ORDER` | `true` (só `"off"` desliga) |

@@ -46,7 +46,16 @@ const list = (v: string | undefined, fallback: readonly string[]): string[] => {
 
 // "Rótulo=slug" → { label, href: "/?category=<slug>" }; item sem "=" é descartado.
 const parseNav = (v: string | undefined): NavItem[] =>
-  list(v, ["Bolsas=bolsas", "Chapéus=chapeus", "Calçados=calcados", "Casa=casa"]).flatMap((item) => {
+  list(v, [
+    "Bolsas=bolsas",
+    "Rasteirinhas=rasteirinhas",
+    "Calçados=calcados",
+    "Moda Praia=moda-praia",
+    "Moda Feminina=moda-feminina",
+    "Chapéus=chapeus",
+    "Acessórios=acessorios",
+    "Casa=casa",
+  ]).flatMap((item) => {
     const i = item.indexOf("=");
     const label = item.slice(0, i).trim();
     const slug = item.slice(i + 1).trim();
@@ -94,18 +103,18 @@ export const brand: Brand = {
   whatsapp: str(process.env.NEXT_PUBLIC_WHATSAPP, ""),
   instagram: str(process.env.NEXT_PUBLIC_INSTAGRAM, ""),
   meta: {
-    title: str(process.env.NEXT_PUBLIC_BRAND_META_TITLE, "Ateliê Eli Trassi Macramê — bolsas feitas à mão"),
+    title: str(process.env.NEXT_PUBLIC_BRAND_META_TITLE, "Ateliê Eli Trassi Macramê — bolsas, rasteirinhas e moda praia feitas à mão"),
     description: str(
       process.env.NEXT_PUBLIC_BRAND_META_DESCRIPTION,
-      "Bolsas e peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.",
+      "Bolsas, rasteirinhas, moda praia e outras peças em macramê feitas à mão, nó a nó, na Vila Galvão em Guarulhos. Encomendas sob medida e envio para todo o Brasil.",
     ),
-    shortDescription: str(process.env.NEXT_PUBLIC_BRAND_META_SHORT, "Bolsas e peças em macramê feitas à mão em Guarulhos-SP."),
+    shortDescription: str(process.env.NEXT_PUBLIC_BRAND_META_SHORT, "Bolsas, rasteirinhas e moda praia em macramê feitas à mão em Guarulhos-SP."),
   },
   hero: {
     eyebrow: str(process.env.NEXT_PUBLIC_BRAND_HERO_EYEBROW, `Ateliê · ${location}`),
     title: str(process.env.NEXT_PUBLIC_BRAND_HERO_TITLE, "Feito à mão,"),
     titleEmphasis: str(process.env.NEXT_PUBLIC_BRAND_HERO_EMPHASIS, "nó a nó."),
-    subtitle: str(process.env.NEXT_PUBLIC_BRAND_HERO_SUBTITLE, `Bolsas e peças em macramê criadas uma a uma no ateliê. ${shipping}.`),
+    subtitle: str(process.env.NEXT_PUBLIC_BRAND_HERO_SUBTITLE, `Bolsas, rasteirinhas e moda praia em macramê, criadas uma a uma no ateliê. ${shipping}.`),
   },
   marquee: list(process.env.NEXT_PUBLIC_BRAND_MARQUEE, [
     "feito à mão",
@@ -121,8 +130,8 @@ export const brand: Brand = {
   ),
   nav: parseNav(process.env.NEXT_PUBLIC_BRAND_NAV),
   search: {
-    placeholder: str(process.env.NEXT_PUBLIC_BRAND_SEARCH_PLACEHOLDER, "Busque bolsas, chapéus, peças…"),
-    suggestions: list(process.env.NEXT_PUBLIC_BRAND_SEARCH_SUGGESTIONS, ["bolsa caracol", "boho", "chapéu", "sob medida"]),
+    placeholder: str(process.env.NEXT_PUBLIC_BRAND_SEARCH_PLACEHOLDER, "Busque bolsas, rasteirinhas, moda praia…"),
+    suggestions: list(process.env.NEXT_PUBLIC_BRAND_SEARCH_SUGGESTIONS, ["bolsa caracol", "boho", "rasteirinha", "moda praia", "sob medida"]),
   },
   chat: {
     greeting: str(
@@ -130,7 +139,7 @@ export const brand: Brand = {
       `Oi! Sou a assistente do ${name}. Posso te ajudar com as peças, preços, encomendas sob medida, frete e cuidados com o macramê. 🧶`,
     ),
     chips: list(process.env.NEXT_PUBLIC_BRAND_CHAT_CHIPS, [
-      "Quais bolsas estão disponíveis?",
+      "Quais peças estão disponíveis?",
       "Como funciona o sob medida?",
       "Quanto custa o frete?",
       "Como cuidar do macramê?",
@@ -142,9 +151,9 @@ export const brand: Brand = {
     titleEmphasis: str(process.env.NEXT_PUBLIC_BRAND_VIDEO_EMPHASIS, "à peça"),
     text: str(
       process.env.NEXT_PUBLIC_BRAND_VIDEO_TEXT,
-      "Cada bolsa leva horas de nós feitos à mão, com fio de algodão e acabamento caprichado. Assista ao processo e escolha a sua.",
+      "Cada peça leva horas de nós feitos à mão, com fio de algodão e acabamento caprichado. Assista ao processo e escolha a sua.",
     ),
-    caption: str(process.env.NEXT_PUBLIC_BRAND_VIDEO_CAPTION, "Do fio à bolsa: o processo no ateliê"),
+    caption: str(process.env.NEXT_PUBLIC_BRAND_VIDEO_CAPTION, "Do fio à peça: o processo no ateliê"),
     steps: list(process.env.NEXT_PUBLIC_BRAND_VIDEO_STEPS, ["01 · Escolha do fio", "02 · Nós e trama", "03 · Acabamento"]),
     // Filmes de marca (mp4 em /public ou URL absoluta): tocam mudos em sequência quando a seção aparece.
     films: parseFilms(process.env.NEXT_PUBLIC_BRAND_VIDEO_FILMS),
@@ -154,7 +163,7 @@ export const brand: Brand = {
     enabled: (process.env.NEXT_PUBLIC_BRAND_CUSTOM_ORDER ?? "").trim() !== "off",
     text: str(
       process.env.NEXT_PUBLIC_BRAND_CUSTOM_ORDER_TEXT,
-      "Escolha a cor do fio, o tamanho e a ferragem — dourada ou prateada. A gente cria a peça junto com você e envia para qualquer lugar do Brasil.",
+      "Escolha a cor do fio, o tamanho e os detalhes — como a ferragem dourada ou prateada das bolsas. A gente cria a peça junto com você e envia para qualquer lugar do Brasil.",
     ),
   },
   // Imagens editoriais (fotos reais das peças), servidas de /public ou URL absoluta.
