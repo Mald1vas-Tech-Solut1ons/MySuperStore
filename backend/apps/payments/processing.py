@@ -5,11 +5,15 @@ Efí e a simulação de PIX.
 Mantida fora de views.py/services.py para ser idempotente, testável e livre de
 dependências de request HTTP.
 """
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 
 from apps.orders.models import Order, OrderStatus
 from .models import CommissionEntry, Payment, PaymentStatus, Payout, PayoutStatus
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -19,11 +23,20 @@ def process_successful_payment(order: Order, raw_response: dict | None = None, c
     comissões, executa o split e cria os
     Payouts. Idempotente — chamadas repetidas para um pedido já confirmado são no-op.
 
-    Retorna True se processou agora, False se já estava confirmado.
+    Só um pedido PENDENTE pode ser confirmado (lista de estados permitidos, não de proibidos).
+    Um pagamento que chega para um pedido CANCELADO (ex.: PIX pago depois da expiração) NÃO
+    reativa o pedido: o estoque já voltou e outra pessoa pode tê-lo comprado. O dinheiro
+    recebido fica registrado como "pagamento órfão" para estorno ou revisão manual.
+
+    Retorna True se processou agora, False se não havia o que confirmar (já confirmado
+    ou pedido fora do estado pendente).
     """
     # Bloqueia a linha do pedido para evitar corrida entre webhook e confirmação manual
     order = Order.objects.select_for_update().get(id=order.id)
     if order.status == OrderStatus.CONFIRMED:
+        return False
+    if order.status != OrderStatus.PENDING:
+        _registrar_pagamento_orfao(order)
         return False
 
     raw_response = raw_response or {}
@@ -96,6 +109,27 @@ def process_successful_payment(order: Order, raw_response: dict | None = None, c
             cart.items.filter(variant_id__in=variant_ids).delete()
 
     return True
+
+
+def _registrar_pagamento_orfao(order: Order) -> None:
+    """Marca (uma única vez) que entrou dinheiro para um pedido que não pode mais ser confirmado.
+
+    Não estorna sozinho: estornar é decisão financeira que um humano precisa ver. O
+    `logger.error` vai para o Sentry; o marcador em `raw_response` permite listar os casos.
+    """
+    logger.error(
+        "Pagamento recebido para o pedido %s com status '%s': NÃO foi confirmado. "
+        "Estornar ao cliente ou revisar manualmente.", order.order_number, order.status,
+    )
+    payment = Payment.objects.filter(order=order).first()
+    if not payment:
+        return
+    dados = dict(payment.raw_response or {})
+    if "orphan_payment" in dados:  # webhook reenviado: não sobrescreve a primeira marca
+        return
+    dados["orphan_payment"] = {"received_at": timezone.now().isoformat(), "order_status": order.status}
+    payment.raw_response = dados
+    payment.save(update_fields=["raw_response", "updated_at"])
 
 
 def settle_payout(payout: Payout) -> bool:
