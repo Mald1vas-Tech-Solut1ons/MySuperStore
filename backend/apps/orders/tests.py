@@ -823,3 +823,148 @@ class ExpiracaoPedidosTest(TestCase):
         self.expire()
         self.expire()
         self.assertEqual(self._estoque(), 5)
+
+
+class PagamentoTardioTest(TestCase):
+    """PIX pago depois de o pedido ser cancelado por expiração.
+
+    Antes: process_successful_payment só conhecia CONFIRMED, então um pedido CANCELLED com a
+    cobrança ainda podendo ser paga voltava a 'confirmed' com o estoque já devolvido (a peça podia ser
+    vendida de novo). Agora só um pedido PENDENTE confirma; o resto vira 'pagamento órfão'.
+    """
+
+    def setUp(self):
+        from apps.orders.tasks import expire_pending_pix_orders
+
+        self.expire = expire_pending_pix_orders
+        seller = Seller.objects.create(
+            user=User.objects.create(email="loja-tardio@test.com", first_name="L", last_name="T"),
+            store_name="Loja Tardio", slug="loja-tardio", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat Tardio", slug="cat-tardio")
+        product = Product.objects.create(
+            seller=seller, category=cat, name="Peça", slug="peca-tardio",
+            base_price=Decimal("100.00"), is_available=True,
+        )
+        self.variant = ProductVariant.objects.create(product=product, sku="peca-tardio-un", stock=5, is_active=True)
+        self.buyer = User.objects.create(email="comprador-tardio@test.com", first_name="C", last_name="T", is_active=True)
+        cart = Cart.objects.create(user=self.buyer)
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+
+    def _pedido_pix(self, minutos=61, expira_em_min=None):
+        """Pedido de 1 peça com PIX pendente, 'envelhecido'; `expira_em_min` = validade do QR a partir de agora."""
+        from apps.orders.models import Order
+
+        request = APIRequestFactory().post("/api/v1/orders/", ADDRESS)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=dict(ADDRESS), context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(minutes=minutos))
+        expires_at = None if expira_em_min is None else timezone.now() + timedelta(minutes=expira_em_min)
+        Payment.objects.create(order=order, method=PaymentMethod.PIX, status=PaymentStatus.PENDING,
+                               amount=order.total, efi_txid="TX1", expires_at=expires_at)
+        order.refresh_from_db()
+        return order
+
+    def _estoque(self):
+        self.variant.refresh_from_db()
+        return self.variant.stock
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pagamento_de_pedido_cancelado_nao_reativa_o_pedido(self, _notify):
+        from apps.payments.models import CommissionEntry
+
+        order = self._pedido_pix()
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(self._estoque(), 5)                       # o estoque já voltou
+
+        self.assertFalse(process_successful_payment(order))        # o PIX chega tarde
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)      # continua cancelado
+        self.assertEqual(self._estoque(), 5)                       # e a peça continua livre
+        self.assertFalse(CommissionEntry.objects.filter(sub_order__order=order).exists())
+        self.assertFalse(Payout.objects.filter(sub_order__order=order).exists())
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pagamento_orfao_fica_marcado_uma_unica_vez(self, _notify):
+        order = self._pedido_pix()
+        self.expire()
+        process_successful_payment(order)
+        primeira = Payment.objects.get(order=order).raw_response["orphan_payment"]
+        self.assertEqual(primeira["order_status"], OrderStatus.CANCELLED)
+        process_successful_payment(order)                          # webhook reenviado
+        self.assertEqual(Payment.objects.get(order=order).raw_response["orphan_payment"], primeira)
+
+    def test_pedido_ja_enviado_nao_e_reconfirmado(self):
+        from apps.orders.models import Order
+
+        order = self._pedido_pix(minutos=5)
+        self.assertTrue(process_successful_payment(order))
+        Order.objects.filter(pk=order.pk).update(status=OrderStatus.SHIPPED)
+        order.refresh_from_db()
+        self.assertFalse(process_successful_payment(order))
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.SHIPPED)
+
+    def test_pedido_pendente_continua_confirmando(self):
+        order = self._pedido_pix(minutos=5)
+        self.assertTrue(process_successful_payment(order))
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CONFIRMED)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    @override_settings(EFI_WEBHOOK_SECRET="segredo-de-teste")
+    def test_webhook_de_pedido_cancelado_responde_200_e_nao_confirma(self, _notify):
+        from rest_framework.test import APIClient
+
+        order = self._pedido_pix()
+        self.expire()
+        resposta = APIClient().post(
+            "/api/v1/payments/efi-webhook/?hmac=segredo-de-teste",
+            {"pix": [{"txid": "TX1", "valor": str(order.total)}]}, format="json",
+        )
+        self.assertEqual(resposta.status_code, 200)                # 200: o provedor para de reenviar
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(self._estoque(), 5)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pix_com_qr_ainda_valido_nao_e_cancelado(self, _notify):
+        order = self._pedido_pix(minutos=61, expira_em_min=20)     # o cliente ainda pode pagar
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+        self.assertEqual(self._estoque(), 4)                       # a peça segue reservada
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pix_com_qr_vencido_e_cancelado(self, _notify):
+        order = self._pedido_pix(minutos=61, expira_em_min=-1)
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(self._estoque(), 5)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    @mock.patch("apps.payments.services.EfiPixService.create_charge", return_value=("TX9", "copia-e-cola", "base64"))
+    @mock.patch("apps.payments.services.EfiPixService.is_configured", return_value=True)
+    @override_settings(EFI_PIX_EXPIRACAO=1800)
+    def test_criar_cobranca_pix_grava_a_validade_do_qr(self, _cfg, _charge, _notify):
+        from rest_framework.test import APIClient
+
+        request = APIRequestFactory().post("/api/v1/orders/", ADDRESS)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=dict(ADDRESS), context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        cliente = APIClient()
+        cliente.force_authenticate(self.buyer)
+        antes = timezone.now()
+        resposta = cliente.post("/api/v1/payments/process/", {"order_id": str(order.id), "payment_method": "pix"}, format="json")
+        self.assertEqual(resposta.status_code, 201)
+        expira = Payment.objects.get(order=order).expires_at
+        self.assertIsNotNone(expira)
+        self.assertAlmostEqual((expira - antes).total_seconds(), 1800, delta=30)

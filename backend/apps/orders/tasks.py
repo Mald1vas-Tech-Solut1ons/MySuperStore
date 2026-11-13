@@ -118,16 +118,22 @@ def _is_abandoned(payment) -> bool:
     """True se um pedido pendente há mais de 60 min não tem mais como ser pago.
 
     - sem pagamento iniciado: o cliente desistiu antes de escolher o método;
-    - PIX ainda pendente: o QR (validade de 1 h) venceu;
+    - PIX ainda pendente E com o QR vencido: o cliente não consegue mais pagar;
     - cartão recusado ou cancelado: não há cobrança em andamento.
     Cartão ainda PENDING/IN_PROCESS é mantido: aguarda a confirmação do Efí.
+    PIX com o QR ainda válido também é mantido: cancelar agora abriria a janela do "PIX pago
+    depois do cancelamento" (o pedido morre, o QR continua pagável).
     """
+    from django.utils import timezone
     from apps.payments.models import PaymentMethod, PaymentStatus
 
     if payment is None:
         return True
     if payment.method == PaymentMethod.PIX:
-        return payment.status == PaymentStatus.PENDING
+        if payment.status != PaymentStatus.PENDING:
+            return False
+        # expires_at é gravado ao criar a cobrança; sem ele (pagamentos antigos), vale só o tempo do pedido.
+        return payment.expires_at is None or payment.expires_at <= timezone.now()
     return payment.status in (PaymentStatus.REJECTED, PaymentStatus.CANCELLED)
 
 @shared_task

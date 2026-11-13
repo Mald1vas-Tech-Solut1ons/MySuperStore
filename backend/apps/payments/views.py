@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -62,6 +64,7 @@ def process_payment_view(request):
     payment.method = method
     payment.amount = order.total
     payment.status = PaymentStatus.PENDING
+    payment.expires_at = None  # uma tentativa nova não herda a validade da anterior
     payment.save()
 
     if method == PaymentMethod.PIX:
@@ -72,6 +75,9 @@ def process_payment_view(request):
                 payment.pix_qr_code = copia_cola
                 payment.pix_qr_code_base64 = qr_base64
                 payment.raw_response = {"provider": "efi", "txid": txid}
+                # Validade do QR (a mesma enviada ao Efí em create_charge): a expiração do pedido
+                # só cancela depois dela, para um PIX ainda pagável não virar "pagamento tardio".
+                payment.expires_at = timezone.now() + timedelta(seconds=int(getattr(settings, "EFI_PIX_EXPIRACAO", 3600)))
                 payment.save()
             except Exception as exc:
                 logger.error("Falha ao criar cobrança PIX no Efí: %s", exc)
