@@ -362,12 +362,14 @@ class ProductDetailSerializer(ProductListSerializer):
     reviews = serializers.SerializerMethodField()
     video_url = serializers.SerializerMethodField()
     initial_stock = serializers.SerializerMethodField()
+    # id da categoria: o formulário de edição do lojista precisa dele para pré-selecionar.
+    category = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta(ProductListSerializer.Meta):
         fields = ProductListSerializer.Meta.fields + [
             "description", "images", "specifications", "variants", "reviews",
             "video_url", "meta_title", "meta_description", "approval_status", "updated_at",
-            "initial_stock",
+            "initial_stock", "category",
         ]
 
     def get_initial_stock(self, obj):
