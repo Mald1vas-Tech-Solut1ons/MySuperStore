@@ -22,6 +22,7 @@ interface ProductModalProps {
 
 export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: ProductModalProps) {
   const [activeSlug, setActiveSlug] = useState(slug);
+  const detailsRef = useRef<HTMLDivElement>(null);
   const [product, setProduct] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -298,14 +299,14 @@ export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: Pr
               </div>
 
               {/* RIGHT: Product Details & Reviews */}
-              <div className="flex-1 min-h-0 w-full md:w-1/2 flex flex-col overflow-y-auto">
+              <div ref={detailsRef} className="flex-1 min-h-0 w-full md:w-1/2 flex flex-col overflow-y-auto">
                 <div className="flex-grow p-6 md:p-8 space-y-6">
                   
                   {/* Header */}
                   <div className="relative pr-8">
                     <div className="flex justify-between items-start gap-4 mb-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                        {product.category}
+                        {product.category_name}
                       </span>
                       {/* Nota só com avaliações reais (antes mostrava "5.0" com zero avaliações). */}
                       {product.review_count > 0 && product.avg_rating ? (
@@ -381,20 +382,6 @@ export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: Pr
                         title="Compartilhar Produto"
                       >
                         <Share2 className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            await wishlistApi.add(product);
-                            toast("Produto adicionado aos favoritos!", "success");
-                          } catch (err) {
-                            toast("Faça login para favoritar produtos.", "error");
-                          }
-                        }}
-                        className="p-2 rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                        title="Adicionar aos Favoritos"
-                      >
-                        <Heart className="h-6 w-6" />
                       </button>
                     </div>
                   
@@ -481,69 +468,61 @@ export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: Pr
                       <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                         {product.description}
                       </p>
-
-                      {/* Logística e Garantia */}
-                      <div className="mt-4 bg-primary/5 rounded-xl p-4 border border-primary/10 space-y-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                          <Truck className="w-4 h-4" /> Logística e Devoluções
-                        </h4>
-                        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                          {product.is_free_shipping ? (
-                            <div className="flex items-center gap-2 text-emerald-500 font-semibold">
-                              <Truck className="w-4 h-4" /> Frete grátis
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Truck className="w-4 h-4" /> Frete calculado no checkout
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" /> Prazo de entrega calculado pelo CEP no checkout
-                          </div>
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/40">
-                            <Info className="w-4 h-4" /> Política de Devolução: Você tem até 7 dias após o recebimento para devolver gratuitamente.
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Características Técnicas Dynamicas ou Fixas */}
-                      <div className="mt-4 bg-secondary/10 rounded-xl p-4 border border-border/30">
-                        <h4 className="text-xs font-bold uppercase tracking-wider mb-3 text-foreground">Características Técnicas</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                          {product.specifications && product.specifications.length > 0 ? (
-                             product.specifications.map((spec: any, idx: number) => (
-                               <div key={idx} className="flex justify-between border-b border-border/20 pb-1">
-                                 <span className="text-muted-foreground">{spec.attribute_name}</span>
-                                 <span className="font-medium text-foreground">{spec.attribute_value}</span>
-                               </div>
-                             ))
-                          ) : product.variants && product.variants.length > 0 ? (
-                             product.variants[0].attributes.map((attr: any, idx: number) => (
-                               <div key={`var-${idx}`} className="flex justify-between border-b border-border/20 pb-1">
-                                 <span className="text-muted-foreground">{attr.attribute_name}</span>
-                                 <span className="font-medium text-foreground">{attr.value}</span>
-                               </div>
-                             ))
-                          ) : (
-                             <>
-                               <div className="flex justify-between border-b border-border/20 pb-1">
-                                 <span className="text-muted-foreground">Marca</span>
-                                 <span className="font-medium text-foreground">{product.brand?.name || "Premium"}</span>
-                               </div>
-                               <div className="flex justify-between border-b border-border/20 pb-1">
-                                 <span className="text-muted-foreground">Condição</span>
-                                 <span className="font-medium text-foreground">Novo</span>
-                               </div>
-                               <div className="flex justify-between border-b border-border/20 pb-1">
-                                 <span className="text-muted-foreground">Garantia</span>
-                                 <span className="font-medium text-foreground">12 meses</span>
-                               </div>
-                             </>
-                          )}
-                        </div>
-                      </div>
                     </div>
                   )}
+
+                  {/* Logística: aparece sempre, mesmo sem descrição */}
+                  <div className="bg-primary/5 rounded-xl p-4 border border-primary/10 space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                      <Truck className="w-4 h-4" /> Prazo, envio e devoluções
+                    </h4>
+                    <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                      {Number(product.estimated_delivery_days) > 0 && (
+                        <div className="flex items-start gap-2">
+                          <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                          <span>
+                            <strong className="font-semibold text-foreground">Feita à mão:</strong> preparo de até{" "}
+                            {Number(product.estimated_delivery_days)} {Number(product.estimated_delivery_days) === 1 ? "dia útil" : "dias úteis"},
+                            mais o prazo de envio calculado pelo seu CEP no carrinho.
+                          </span>
+                        </div>
+                      )}
+                      {product.is_free_shipping ? (
+                        <div className="flex items-center gap-2 text-emerald-500 font-semibold">
+                          <Truck className="w-4 h-4" /> Frete grátis
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Truck className="w-4 h-4" /> Frete calculado no carrinho
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/40">
+                        <Info className="w-4 h-4" /> Política de Devolução: Você tem até 7 dias após o recebimento para devolver gratuitamente.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Características: só o que a lojista cadastrou (nada de dados inventados) */}
+                  {(() => {
+                    const rows: { name: string; value: string }[] =
+                      product.specifications && product.specifications.length > 0
+                        ? product.specifications.map((s: any) => ({ name: s.attribute_name, value: s.attribute_value }))
+                        : (product.variants?.[0]?.attributes ?? []).map((a: any) => ({ name: a.attribute_name, value: a.value }));
+                    if (rows.length === 0) return null;
+                    return (
+                      <div className="bg-secondary/10 rounded-xl p-4 border border-border/30">
+                        <h4 className="text-xs font-bold uppercase tracking-wider mb-3 text-foreground">Características da peça</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                          {rows.map((row, idx) => (
+                            <div key={idx} className="flex justify-between gap-3 border-b border-border/20 pb-1">
+                              <span className="text-muted-foreground">{row.name}</span>
+                              <span className="font-medium text-foreground text-right">{row.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Reviews Section */}
                   <div className="pt-6 border-t border-border/40 space-y-4">
@@ -594,7 +573,9 @@ export function ProductModal({ slug, isOpen, onClose, initialVideo = false }: Pr
                         key={item.id} 
                         onClick={() => {
                           catalogApi.track(item.slug, "click").catch(() => {});
-                          window.open(`/s/${item.seller_slug}?product=${item.slug}`, "_blank");
+                          // Troca a peça aqui mesmo (sem abrir outra aba) e volta ao topo do painel.
+                          setActiveSlug(item.slug);
+                          detailsRef.current?.scrollTo({ top: 0 });
                         }}
                         className="shrink-0 w-[200px] snap-start bg-card border border-border/50 rounded-xl p-3 hover:border-primary/50 cursor-pointer transition-all hover:scale-[1.02] group"
                       >
