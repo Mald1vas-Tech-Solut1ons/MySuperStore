@@ -84,7 +84,7 @@ function Storefront() {
     const used = new Set(allProducts.map((p) => p.category_slug).filter(Boolean));
     const list = categories.filter((c) => used.has(c.slug));
     return browsing && category && !list.some((c) => c.slug === category)
-      ? [...list, { id: category, slug: category, name: category, image: null }]
+      ? [...list, categories.find((c) => c.slug === category) ?? { id: category, slug: category, name: category, image: null }]
       : list;
   }, [categories, allProducts, browsing, category]);
 
@@ -141,6 +141,17 @@ function Storefront() {
                   <h3 className="font-serif text-3xl text-atelie-ink">Estamos recarregando a coleção</h3>
                   <p className="mx-auto mt-3 max-w-md text-[15px] text-atelie-ink/60">Houve uma instabilidade rápida. Tentando de novo…</p>
                   <button type="button" onClick={() => setRetry((n) => n + 1)} className="mt-6 h-11 rounded-full bg-atelie-ink px-6 text-sm text-atelie-cream">Tentar agora</button>
+                </div>
+              ) : category && !search && !loja ? (
+                // Categoria sem peças (ainda): em vez de um beco sem saída, leva à coleção inteira.
+                <div className="rounded-3xl bg-white/50 p-10 text-center ring-1 ring-black/5">
+                  <h3 className="font-serif text-3xl text-atelie-ink">Novas peças chegando</h3>
+                  <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-atelie-ink/60">
+                    Ainda não temos peças em {gridTitle}. Estamos preparando as próximas criações.
+                  </p>
+                  <button type="button" onClick={() => setParam("category", null)} className="mt-6 h-11 rounded-full bg-atelie-ink px-6 text-sm text-atelie-cream transition-colors hover:bg-atelie-clay">
+                    Ver toda a coleção
+                  </button>
                 </div>
               ) : undefined
             }
