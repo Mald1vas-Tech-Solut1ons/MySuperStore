@@ -447,3 +447,64 @@ class DaphnePatchTest(SimpleTestCase):
         req.handleContentChunk(b"\x00" * 600)
         req.handleContentChunk(b"\x00" * 600)
         self.assertTrue(channel.transport.written.getvalue().startswith(b"HTTP/1.1 413"))
+
+
+from asgiref.sync import async_to_sync  # noqa: E402
+from channels.routing import URLRouter  # noqa: E402
+from channels.testing import WebsocketCommunicator  # noqa: E402
+from django.contrib.auth.models import AnonymousUser  # noqa: E402
+from django.test import TransactionTestCase  # noqa: E402
+from django.urls import re_path  # noqa: E402
+
+from apps.sellers.consumers import ChatConsumer  # noqa: E402
+from apps.sellers.models import ChatRoom  # noqa: E402
+
+
+@override_settings(CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}})
+class ChatWebSocketAuthzTest(TransactionTestCase):
+    """Só o cliente e o dono da loja entram na sala; saber o id da sala não basta.
+
+    TransactionTestCase porque o consumer consulta o banco em outra thread
+    (database_sync_to_async), que não enxerga a transação de um TestCase comum.
+    """
+
+    def setUp(self):
+        self.cliente = criar_usuario("cliente-chat@test.com")
+        self.dono = criar_usuario("dono-chat@test.com")
+        self.intruso = criar_usuario("intruso-chat@test.com")
+        self.loja = Seller.objects.create(user=self.dono, store_name="Loja Chat", slug="loja-chat", status="approved")
+        self.sala = ChatRoom.objects.create(customer=self.cliente, seller=self.loja)
+
+    def _conectar(self, usuario, room_id=None):
+        """Abre o WebSocket como `usuario`. Retorna (conectou, código de fechamento)."""
+        app = URLRouter([re_path(r"ws/chat/(?P<room_id>[0-9a-f-]+)/$", ChatConsumer.as_asgi())])
+        comunicador = WebsocketCommunicator(app, f"/ws/chat/{room_id or self.sala.id}/")
+        comunicador.scope["user"] = usuario
+
+        async def abrir():
+            conectou, codigo = await comunicador.connect()
+            if conectou:
+                await comunicador.disconnect()
+            return conectou, codigo
+
+        return async_to_sync(abrir)()
+
+    def test_cliente_da_sala_entra(self):
+        self.assertTrue(self._conectar(self.cliente)[0])
+
+    def test_dono_da_loja_da_sala_entra(self):
+        self.assertTrue(self._conectar(self.dono)[0])
+
+    def test_terceiro_autenticado_nao_entra(self):
+        conectou, codigo = self._conectar(self.intruso)
+        self.assertFalse(conectou)
+        self.assertEqual(codigo, 4403)
+
+    def test_anonimo_nao_entra(self):
+        self.assertFalse(self._conectar(AnonymousUser())[0])
+
+    def test_sala_inexistente_nao_entra(self):
+        self.assertFalse(self._conectar(self.cliente, room_id="00000000-0000-0000-0000-000000000000")[0])
+
+    def test_id_fora_do_formato_uuid_nao_derruba_o_servidor(self):
+        self.assertFalse(self._conectar(self.cliente, room_id="abc-def")[0])
