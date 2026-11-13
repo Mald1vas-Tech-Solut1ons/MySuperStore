@@ -11,6 +11,8 @@ import { BrandLoader } from "@/components/ui/BrandLoader";
 import { sellerDashboardApi, catalogApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { ProductMediaUploader, UploaderImage } from "@/components/seller/ProductMediaUploader";
+import { ProductFormFields, CategoryOption } from "@/components/seller/ProductFormFields";
+import { ProductFormValues, emptyProductForm, productToForm, toProductPayload } from "@/lib/productForm";
 import { useToast } from "@/components/ui/Toast";
 import Confetti from "react-confetti";
 
@@ -33,7 +35,7 @@ export default function SellerProductsPage() {
 
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
 
   // Modal: "create" (formulário) → "media" (uploader); "media" direto; "promo"; "edit"
@@ -48,15 +50,11 @@ export default function SellerProductsPage() {
   const [promoPrice, setPromoPrice] = useState("");
   const [promoEndsAt, setPromoEndsAt] = useState("");
 
-  // Form de criação
-  const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [basePrice, setBasePrice] = useState("");
-  const [stock, setStock] = useState("");
-  const [description, setDescription] = useState("");
+  // Form de criação/edição (mesmos campos nos dois modais)
+  const [form, setForm] = useState<ProductFormValues>(emptyProductForm);
+  const patchForm = (patch: Partial<ProductFormValues>) => setForm((f) => ({ ...f, ...patch }));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [specs, setSpecs] = useState<{attribute_name: string; attribute_value: string}[]>([]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -82,32 +80,39 @@ export default function SellerProductsPage() {
   }, [isAuthenticated]);
 
   const openCreate = () => {
-    setName(""); setCategoryId(""); setBasePrice(""); setStock(""); setDescription("");
-    setSpecs([]);
+    setForm(emptyProductForm);
     setFormError(""); setActiveProductId(null);
     setInitialImages([]); setInitialVideo(null); setMediaCount(0);
     setModalStep("create");
   };
 
+  // Mensagem de erro útil: a API devolve {campo: ["erro"]} nas validações.
+  const apiErrorMessage = (err: any, fallback: string) => {
+    const data = err.response?.data;
+    if (data?.detail) return data.detail;
+    if (data && typeof data === "object") {
+      const first = Object.values(data).flat()[0];
+      if (typeof first === "string") return first;
+    }
+    return fallback;
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.categoryId) {
+      setFormError("Escolha a categoria da peça.");
+      return;
+    }
     setSaving(true);
     setFormError("");
     try {
-      const { data } = await sellerDashboardApi.products.create({
-        name,
-        category: categoryId,
-        base_price: parseFloat(basePrice),
-        description,
-        initial_stock: stock ? parseInt(stock, 10) : 0,
-        specifications: specs.filter(s => s.attribute_name.trim() && s.attribute_value.trim())
-      });
+      const { data } = await sellerDashboardApi.products.create(toProductPayload(form));
       setActiveProductId(data.id);
       setInitialImages([]); setInitialVideo(null); setMediaCount(0);
       setModalStep("media");
       fetchProducts();
     } catch (err: any) {
-      setFormError(err.response?.data?.detail || "Erro ao criar o produto. Verifique os dados.");
+      setFormError(apiErrorMessage(err, "Erro ao criar o produto. Verifique os dados."));
     } finally {
       setSaving(false);
     }
@@ -161,39 +166,33 @@ export default function SellerProductsPage() {
 
   const openEdit = async (p: SellerProduct) => {
     setActiveProductId(p.id);
-    setName(p.name);
-    setBasePrice(p.base_price.toString());
+    // Mostra nome e preço da lista enquanto o detalhe completo carrega.
+    setForm({ ...emptyProductForm, name: p.name, basePrice: p.base_price.toString() });
     setFormError("");
     setModalStep("edit");
     try {
       const { data } = await sellerDashboardApi.products.get(p.id);
-      setCategoryId(data.category || "");
-      setDescription(data.description || "");
-      setStock(data.initial_stock !== undefined ? data.initial_stock.toString() : "");
-      setSpecs(data.specifications || []);
+      setForm(productToForm(data));
     } catch {
-       /* fallback no if err */
+      setFormError("Não foi possível carregar todos os dados do produto. Feche e tente de novo.");
     }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeProductId) return;
+    if (!form.categoryId) {
+      setFormError("Escolha a categoria da peça.");
+      return;
+    }
     setSaving(true);
     setFormError("");
     try {
-      await sellerDashboardApi.products.update(activeProductId, {
-        name,
-        category: categoryId,
-        base_price: parseFloat(basePrice),
-        description,
-        initial_stock: stock ? parseInt(stock, 10) : 0,
-        specifications: specs.filter(s => s.attribute_name.trim() && s.attribute_value.trim())
-      });
+      await sellerDashboardApi.products.update(activeProductId, toProductPayload(form));
       setModalStep(null);
       fetchProducts();
     } catch (err: any) {
-      setFormError(err.response?.data?.detail || "Erro ao editar o produto.");
+      setFormError(apiErrorMessage(err, "Erro ao editar o produto."));
     } finally {
       setSaving(false);
     }
@@ -389,59 +388,7 @@ export default function SellerProductsPage() {
                     </div>
                   )}
                   <form onSubmit={handleCreate} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Nome do Produto</label>
-                      <input required value={name} onChange={(e) => setName(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none"
-                        placeholder="Ex: Bolsa de couro caramelo" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Categoria</label>
-                      <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none">
-                        <option value="" disabled className="bg-[#0A0A15]">Selecione...</option>
-                        {categories.map((c) => <option key={c.id} value={c.id} className="bg-[#0A0A15]">{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Preço (R$)</label>
-                        <div className="relative mt-1.5">
-                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                          <input required type="number" step="0.01" value={basePrice} onChange={(e) => setBasePrice(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none font-mono"
-                            placeholder="0.00" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Estoque</label>
-                        <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)}
-                          className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none font-mono"
-                          placeholder="Ex: 10" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Descrição</label>
-                      <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none resize-none"
-                        placeholder="Detalhes, material, medidas, diferenciais..." />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 flex justify-between items-center">
-                        Características Técnicas (Raio-X)
-                        <button type="button" onClick={() => setSpecs([...specs, {attribute_name: "", attribute_value: ""}])} className="text-[#E6B53C] hover:text-[#B38F25] flex items-center gap-1"><Plus className="w-3 h-3" /> Adicionar campo</button>
-                      </label>
-                      <div className="space-y-2 mt-1.5">
-                        {specs.map((s, idx) => (
-                          <div key={idx} className="flex gap-2">
-                            <input value={s.attribute_name} onChange={e => { const ns = [...specs]; ns[idx].attribute_name = e.target.value; setSpecs(ns); }} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:border-[#E6B53C] outline-none" placeholder="Ex: Material" />
-                            <input value={s.attribute_value} onChange={e => { const ns = [...specs]; ns[idx].attribute_value = e.target.value; setSpecs(ns); }} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:border-[#E6B53C] outline-none" placeholder="Ex: Couro legítimo" />
-                            <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== idx))} className="p-2 text-red-400 hover:bg-red-400/10 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                        ))}
-                        {specs.length === 0 && <p className="text-xs text-neutral-500 italic">Adicione detalhes técnicos para ajudar o comprador.</p>}
-                      </div>
-                    </div>
+                    <ProductFormFields values={form} onChange={patchForm} categories={categories} />
                     <button type="submit" disabled={saving}
                       className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E6B53C] to-[#B38F25] text-black font-black hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50">
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
@@ -486,58 +433,7 @@ export default function SellerProductsPage() {
                     </div>
                   )}
                   <form onSubmit={handleEdit} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Nome do Produto</label>
-                      <input required value={name} onChange={(e) => setName(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none"
-                        placeholder="Ex: Bolsa de couro caramelo" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Categoria</label>
-                      <select required value={categoryId} onChange={(e) => setCategoryId(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none">
-                        <option value="" disabled className="bg-[#0A0A15]">Selecione...</option>
-                        {categories.map((c) => <option key={c.id} value={c.id} className="bg-[#0A0A15]">{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Preço (R$)</label>
-                        <div className="relative mt-1.5">
-                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
-                          <input required type="number" step="0.01" value={basePrice} onChange={(e) => setBasePrice(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none font-mono"
-                            placeholder="0.00" />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Estoque (Opcional)</label>
-                        <input type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)}
-                          className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none font-mono"
-                          placeholder="Mudar estoque base" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400">Descrição</label>
-                      <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)}
-                        className="w-full mt-1.5 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#E6B53C] outline-none resize-none"
-                        placeholder="Detalhes, material, medidas, diferenciais..." />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2 flex justify-between items-center">
-                        Características Técnicas (Raio-X)
-                        <button type="button" onClick={() => setSpecs([...specs, {attribute_name: "", attribute_value: ""}])} className="text-[#E6B53C] hover:text-[#B38F25] flex items-center gap-1"><Plus className="w-3 h-3" /> Adicionar campo</button>
-                      </label>
-                      <div className="space-y-2 mt-1.5">
-                        {specs.map((s, idx) => (
-                          <div key={idx} className="flex gap-2">
-                            <input value={s.attribute_name} onChange={e => { const ns = [...specs]; ns[idx].attribute_name = e.target.value; setSpecs(ns); }} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:border-[#E6B53C] outline-none" placeholder="Ex: Material" />
-                            <input value={s.attribute_value} onChange={e => { const ns = [...specs]; ns[idx].attribute_value = e.target.value; setSpecs(ns); }} className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:border-[#E6B53C] outline-none" placeholder="Ex: Couro legítimo" />
-                            <button type="button" onClick={() => setSpecs(specs.filter((_, i) => i !== idx))} className="p-2 text-red-400 hover:bg-red-400/10 rounded-xl"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <ProductFormFields values={form} onChange={patchForm} categories={categories} stockLabel="Estoque (Opcional)" stockPlaceholder="Mudar estoque base" />
                     <button type="submit" disabled={saving}
                       className="w-full py-3.5 mt-2 rounded-xl bg-gradient-to-r from-[#E6B53C] to-[#B38F25] text-black font-black hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50">
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}

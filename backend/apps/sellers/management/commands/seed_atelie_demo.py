@@ -7,14 +7,13 @@ from django.contrib.auth import get_user_model
 from django.core.files import File
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.catalog.macrame import ensure_macrame_categories
 from apps.catalog.models import Category, Product, ProductImage, ProductStatus, ProductVariant
 from apps.sellers.models import Seller, SellerStatus
 
 USER_EMAIL = "eli@atelie.local"
 SELLER_SLUG = "atelie-eli-trassi"
 BRAND_DIR = Path(settings.BASE_DIR).parent / "frontend" / "public" / "brand" / "atelie"
-
-CATEGORIES = [("Bolsas", "bolsas"), ("Chapéus", "chapeus"), ("Calçados", "calcados"), ("Casa", "casa")]
 
 PRODUCTS = [
     ("Bolsa Caracol", "bolsa-caracol", "249.00", "caracol-dourada.webp",
@@ -57,11 +56,7 @@ class Command(BaseCommand):
             },
         )
 
-        cats = {}
-        for order, (name, slug) in enumerate(CATEGORIES):
-            cats[slug], _ = Category.objects.update_or_create(
-                slug=slug, defaults={"name": name, "is_active": True, "order": order}
-            )
+        cats = ensure_macrame_categories(Category)
 
         for name, slug, price, image, description in PRODUCTS:
             product, _ = Product.objects.update_or_create(
