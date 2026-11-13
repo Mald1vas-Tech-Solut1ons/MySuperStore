@@ -716,3 +716,110 @@ class FlatShippingTest(FreeShippingTest):
         cart.selected_shipping = {str(self.seller.id): {"price": "0.01"}}
         cart.save()
         self.assertEqual(cart.shipping_total, Decimal("25.00"))
+
+
+class ExpiracaoPedidosTest(TestCase):
+    """Pedido pendente há mais de 60 min devolve o estoque quando não há mais como pagar.
+
+    O estoque é baixado na criação do pedido. Antes, só o PIX pendente expirava: pedido sem
+    pagamento iniciado e cartão recusado ficavam 'pending' para sempre com a peça presa.
+    """
+
+    def setUp(self):
+        from apps.orders.tasks import expire_pending_pix_orders
+
+        self.expire = expire_pending_pix_orders
+        seller = Seller.objects.create(
+            user=User.objects.create(email="loja-exp@test.com", first_name="L", last_name="E"),
+            store_name="Loja Exp", slug="loja-exp", status=SellerStatus.APPROVED,
+        )
+        cat = Category.objects.create(name="Cat Exp", slug="cat-exp")
+        product = Product.objects.create(
+            seller=seller, category=cat, name="Peça", slug="peca-exp",
+            base_price=Decimal("100.00"), is_available=True,
+        )
+        self.variant = ProductVariant.objects.create(product=product, sku="peca-exp-un", stock=5, is_active=True)
+        self.buyer = User.objects.create(email="comprador-exp@test.com", first_name="C", last_name="E", is_active=True)
+        cart = Cart.objects.create(user=self.buyer)
+        CartItem.objects.create(cart=cart, variant=self.variant, quantity=1)
+
+    def _pedido(self, minutos=61, pagamento=None):
+        """Cria um pedido de 1 peça (baixa o estoque), 'envelhece' e opcionalmente liga um pagamento."""
+        from apps.orders.models import Order
+
+        request = APIRequestFactory().post("/api/v1/orders/", ADDRESS)
+        request.user = self.buyer
+        serializer = OrderCreateSerializer(data=dict(ADDRESS), context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save()
+        # created_at é auto_now_add: só um update() consegue voltar no tempo.
+        Order.objects.filter(pk=order.pk).update(created_at=timezone.now() - timedelta(minutes=minutos))
+        if pagamento:
+            metodo, status = pagamento
+            Payment.objects.create(order=order, method=metodo, status=status, amount=order.total)
+        order.refresh_from_db()
+        return order
+
+    def _estoque(self):
+        self.variant.refresh_from_db()
+        return self.variant.stock
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pedido_sem_pagamento_iniciado_devolve_estoque(self, _notify):
+        order = self._pedido()
+        self.assertEqual(self._estoque(), 4)  # a baixa aconteceu na criação
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual({s.status for s in order.sub_orders.all()}, {OrderStatus.CANCELLED})
+        self.assertEqual(self._estoque(), 5)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pix_pendente_expirado_continua_cancelando(self, _notify):
+        order = self._pedido(pagamento=(PaymentMethod.PIX, PaymentStatus.PENDING))
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(order.payment.status, PaymentStatus.CANCELLED)
+        self.assertEqual(self._estoque(), 5)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_cartao_recusado_devolve_estoque_e_mantem_status_do_pagamento(self, _notify):
+        order = self._pedido(pagamento=(PaymentMethod.CREDIT_CARD, PaymentStatus.REJECTED))
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CANCELLED)
+        self.assertEqual(order.payment.status, PaymentStatus.REJECTED)  # recusado já é final
+        self.assertEqual(self._estoque(), 5)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_cartao_aguardando_confirmacao_nao_e_cancelado(self, _notify):
+        order = self._pedido(pagamento=(PaymentMethod.CREDIT_CARD, PaymentStatus.PENDING))
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+        self.assertEqual(self._estoque(), 4)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pedido_recente_nao_e_cancelado(self, _notify):
+        order = self._pedido(minutos=30)
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+        self.assertEqual(self._estoque(), 4)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_pedido_pago_nao_e_cancelado(self, _notify):
+        order = self._pedido(pagamento=(PaymentMethod.PIX, PaymentStatus.PENDING))
+        self.assertTrue(process_successful_payment(order))
+        self.expire()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.CONFIRMED)
+        self.assertEqual(self._estoque(), 4)
+
+    @mock.patch("apps.users.notifications.notify_order_pending_customer")
+    def test_rodar_duas_vezes_nao_devolve_estoque_em_dobro(self, _notify):
+        self._pedido()
+        self.expire()
+        self.expire()
+        self.assertEqual(self._estoque(), 5)

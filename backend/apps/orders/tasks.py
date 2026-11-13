@@ -67,41 +67,68 @@ def expire_pending_pix_orders():
             except Exception as e:
                 pass
 
-    # 2. Cancelar Pedidos (pendentes > 60 min)
+    # 2. Cancelar Pedidos abandonados (pendentes > 60 min).
+    # O estoque é baixado na criação do pedido, então TODO pedido pendente que não vai
+    # mais ser pago precisa devolvê-lo: PIX não pago, pedido sem pagamento iniciado
+    # (cliente desistiu antes de escolher o método) e cartão recusado/cancelado.
     orders_to_cancel = Order.objects.filter(
         status=OrderStatus.PENDING,
         created_at__lte=sixty_mins_ago
     )
-    
+
+    cancelled = 0
     for order in orders_to_cancel:
-        payment = Payment.objects.filter(order=order).first()
-        if payment and payment.method == "pix" and payment.status == PaymentStatus.PENDING:
-            with transaction.atomic():
-                order = Order.objects.select_for_update().get(id=order.id)
-                if order.status != OrderStatus.PENDING:
-                    continue
-                
-                # Cancela Pedido e Sub-pedidos
-                order.status = OrderStatus.CANCELLED
-                order.save(update_fields=["status", "updated_at"])
-                
-                for sub in order.sub_orders.all():
-                    sub.status = OrderStatus.CANCELLED
-                    sub.save(update_fields=["status", "updated_at"])
-                    
-                # Cancela Payment
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order.id)
+            if order.status != OrderStatus.PENDING:
+                continue
+
+            # Relê o pagamento DENTRO da trava: o cliente pode ter tentado pagar de novo
+            # (cartão recusado volta a PENDING) entre a consulta acima e agora.
+            payment = Payment.objects.select_for_update().filter(order=order).first()
+            if not _is_abandoned(payment):
+                continue
+
+            # Cancela Pedido e Sub-pedidos
+            order.status = OrderStatus.CANCELLED
+            order.save(update_fields=["status", "updated_at"])
+
+            for sub in order.sub_orders.all():
+                sub.status = OrderStatus.CANCELLED
+                sub.save(update_fields=["status", "updated_at"])
+
+            # Cancela o Payment que ainda aguardava (recusado/cancelado já é final)
+            if payment and payment.status == PaymentStatus.PENDING:
                 payment.status = PaymentStatus.CANCELLED
                 payment.save(update_fields=["status", "updated_at"])
-                
-                # Devolve Estoque
-                for sub in order.sub_orders.all():
-                    for item in sub.items.all():
-                        if item.variant_id:
-                            variant = ProductVariant.objects.select_for_update().get(id=item.variant_id)
-                            variant.stock += item.quantity
-                            variant.save(update_fields=["stock"])
 
-    return f"Checagem concluída. Avisos enviados e expirados."
+            # Devolve Estoque
+            for sub in order.sub_orders.all():
+                for item in sub.items.all():
+                    if item.variant_id:
+                        variant = ProductVariant.objects.select_for_update().get(id=item.variant_id)
+                        variant.stock += item.quantity
+                        variant.save(update_fields=["stock"])
+            cancelled += 1
+
+    return f"Checagem concluída. Avisos enviados; {cancelled} pedido(s) expirado(s)."
+
+
+def _is_abandoned(payment) -> bool:
+    """True se um pedido pendente há mais de 60 min não tem mais como ser pago.
+
+    - sem pagamento iniciado: o cliente desistiu antes de escolher o método;
+    - PIX ainda pendente: o QR (validade de 1 h) venceu;
+    - cartão recusado ou cancelado: não há cobrança em andamento.
+    Cartão ainda PENDING/IN_PROCESS é mantido: aguarda a confirmação do Efí.
+    """
+    from apps.payments.models import PaymentMethod, PaymentStatus
+
+    if payment is None:
+        return True
+    if payment.method == PaymentMethod.PIX:
+        return payment.status == PaymentStatus.PENDING
+    return payment.status in (PaymentStatus.REJECTED, PaymentStatus.CANCELLED)
 
 @shared_task
 def check_pending_pix_orders_task():

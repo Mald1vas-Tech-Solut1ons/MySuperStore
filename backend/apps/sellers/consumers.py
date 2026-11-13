@@ -3,6 +3,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import ChatRoom, ChatMessage
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -16,10 +18,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
-        # Verifica se a sala existe
-        room_exists = await self.check_room_exists(self.room_id)
-        if not room_exists:
-            await self.close()
+        # Só entra quem participa da sala (o cliente ou o dono da loja). Saber o id da
+        # sala não é autorização: a mesma regra do ChatRoomViewSet.get_queryset na API REST.
+        if not await self.user_can_access_room(self.room_id, self.user):
+            await self.close(code=4403)
             return
 
         # Entra no grupo
@@ -57,8 +59,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
     @database_sync_to_async
-    def check_room_exists(self, room_id):
-        return ChatRoom.objects.filter(id=room_id).exists()
+    def user_can_access_room(self, room_id, user):
+        """True só se a sala existe E o usuário é o cliente ou o dono da loja dela."""
+        try:
+            return ChatRoom.objects.filter(
+                Q(id=room_id) & (Q(customer=user) | Q(seller__user=user))
+            ).exists()
+        except (ValueError, ValidationError):  # id fora do formato UUID na URL
+            return False
 
     @database_sync_to_async
     def save_message(self, room_id, user, message_text):
